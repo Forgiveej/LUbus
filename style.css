@@ -1,0 +1,158 @@
+/* Lehigh Transit — style.css */
+
+/* Lehigh brand colors */
+:root {
+  --lehigh-brown: #653819;
+  --lehigh-brown-dark: #4a2812;
+  --bg-main: #f4f4f6;
+  --bg-sidebar: #ffffff;
+  --sidebar-item: #eeeeee;
+  --sidebar-item-hover: #e2e2e2;
+  --border: #e0e0e0;
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+  --map-bg: #dde8d6;
+  --map-border: #7a9b6e;
+  --map-text: #5c7a4f;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg-main);
+  line-height: 1.5;
+}
+
+/* Layout: sidebar + main */
+.app {
+  display: flex;
+  min-height: 100vh;
+  border-top: 2px solid var(--lehigh-brown);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 1rem;
+}
+
+.sidebar h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.route-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.route-item {
+  background: var(--sidebar-item);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.route-item:hover {
+  background: var(--sidebar-item-hover);
+}
+
+/* Main content */
+.main {
+  flex: 1;
+  padding: 2rem 2.5rem;
+}
+
+.main h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+/* Search form */
+.search-bar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar input {
+  flex: 1;
+  min-width: 180px;
+  max-width: 220px;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.search-bar input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--lehigh-brown);
+  box-shadow: 0 0 0 2px rgba(101, 56, 25, 0.15);
+}
+
+/* Find Route button */
+.btn-find {
+  padding: 0.65rem 1.1rem;
+  background: var(--lehigh-brown);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-find:hover {
+  background: var(--lehigh-brown-dark);
+}
+
+/* Map placeholder */
+.map-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background: var(--map-bg);
+  border: 2px dashed var(--map-border);
+  border-radius: 8px;
+  color: var(--map-text);
+  font-size: 1rem;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 640px) {
+  .app {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-bar input {
+    max-width: none;
+  }
+}
