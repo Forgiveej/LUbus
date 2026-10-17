@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lehigh Shuttle+</title>
   <style>
     body {
@@ -34,29 +34,43 @@
       border-radius: 8px;
       cursor: pointer;
     }
-    .route:hover { background: #eadbcf; }
-    main { flex: 1; padding: 30px; }
-    input, button {
+    .route:hover {
+      background: #eadbcf;
+    }
+    main {
+      flex: 1;
+      padding: 30px;
+    }
+    input,
+    button {
       padding: 12px;
       margin: 5px;
       border-radius: 8px;
       border: 1px solid #ccc;
+      font-size: 14px;
     }
     button {
       background: #653819;
       color: white;
       cursor: pointer;
+      border: none;
     }
-    .map {
-      margin-top: 25px;
-      height: 350px;
-      background: #e1e8df;
-      border: 2px dashed #a5b7a3;
-      border-radius: 12px;
+    .controls {
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: #567052;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    #map {
+      margin-top: 25px;
+      height: 450px;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+    #note {
+      margin-top: 8px;
+      color: #666;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -71,13 +85,116 @@
     </aside>
     <main>
       <h2>Find Your Shuttle</h2>
-      <input placeholder="From: Starting point">
-      <input placeholder="To: Destination">
-      <button>Find Route</button>
-      <div class="map">
-        Interactive Campus Map Coming Soon
+      <div class="controls">
+        <input id="origin" placeholder="From: Starting point" size="35" />
+        <input id="destination" placeholder="To: Destination" size="35" />
+        <button id="findRoute">Find Route</button>
+        <button id="clearRoute" style="background:#999">Clear</button>
       </div>
+      <div id="note">Tip: start typing an address or building name (autocomplete enabled).</div>
+      <div id="map">Loading map…</div>
     </main>
   </div>
+
+  <script>
+    // Map variables
+    let map;
+    let directionsService;
+    let directionsRenderer;
+    let originAutocomplete;
+    let destinationAutocomplete;
+
+    function initMap() {
+      // Lehigh University approximate center
+      const lehighCenter = { lat: 40.6063, lng: -75.3721 };
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: lehighCenter,
+        zoom: 15,
+        mapTypeControl: false,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: false
+      });
+
+      // Autocomplete for inputs (Places library must be loaded)
+      const originInput = document.getElementById("origin");
+      const destinationInput = document.getElementById("destination");
+
+      originAutocomplete = new google.maps.places.Autocomplete(originInput, { fields: ["place_id","geometry","name","formatted_address"] });
+      destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, { fields: ["place_id","geometry","name","formatted_address"] });
+
+      // Optional: bias results to map bounds
+      originAutocomplete.bindTo("bounds", map);
+      destinationAutocomplete.bindTo("bounds", map);
+
+      // Hook up buttons
+      document.getElementById("findRoute").addEventListener("click", () => {
+        calculateAndDisplayRoute();
+      });
+
+      document.getElementById("clearRoute").addEventListener("click", () => {
+        directionsRenderer.set("directions", null);
+        originInput.value = "";
+        destinationInput.value = "";
+        map.setCenter(lehighCenter);
+        map.setZoom(15);
+      });
+
+      // Allow pressing Enter to trigger
+      [originInput, destinationInput].forEach(input => {
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            calculateAndDisplayRoute();
+          }
+        });
+      });
+    }
+
+    function calculateAndDisplayRoute() {
+      const originVal = document.getElementById("origin").value.trim();
+      const destinationVal = document.getElementById("destination").value.trim();
+
+      if (!originVal || !destinationVal) {
+        alert("Please enter both origin and destination.");
+        return;
+      }
+
+      directionsService.route(
+        {
+          origin: originVal,
+          destination: destinationVal,
+          travelMode: google.maps.TravelMode.TRANSIT, // shuttle/campus is likely transit; change to DRIVING if needed
+          transitOptions: {
+            // Optional: set preferred routing for transit if desired
+          },
+          provideRouteAlternatives: false
+        },
+        (response, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(response);
+          } else {
+            alert("Directions request failed due to " + status);
+          }
+        }
+      );
+    }
+  </script>
+
+  <!--
+    IMPORTANT:
+    1) Replace YOUR_API_KEY below with your Google Maps JavaScript API key.
+    2) Enable these APIs in Google Cloud Console for that key:
+       - Maps JavaScript API
+       - Places API (for autocomplete)
+       - Directions API (for route drawing / directions)
+    3) Restrict the key to your site (HTTP referrers) and specific APIs.
+    4) Billing must be enabled on the project (Maps APIs require billing even for free-tier usage).
+  -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap&libraries=places" async defer></script>
 </body>
 </html>
