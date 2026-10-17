@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lehigh Shuttle+</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f6fa;
+    }
+    header {
+      background: #653819;
+      color: white;
+      padding: 20px 30px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .container {
+      display: flex;
+      min-height: 85vh;
+    }
+    aside {
+      width: 220px;
+      background: white;
+      padding: 24px;
+      border-right: 1px solid #ddd;
+    }
+    .route {
+      padding: 15px;
+      margin-bottom: 10px;
+      background: #f0f0f0;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .route:hover { background: #eadbcf; }
+    main { flex: 1; padding: 30px; }
+    input, button {
+      padding: 12px;
+      margin: 5px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #653819;
+      color: white;
+      cursor: pointer;
+    }
+    .map {
+      margin-top: 25px;
+      height: 350px;
+      background: #e1e8df;
+      border: 2px dashed #a5b7a3;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #567052;
+    }
+  </style>
+</head>
+<body>
+  <header>🚌 Lehigh Shuttle+</header>
+  <div class="container">
+    <aside>
+      <h3>Bus Routes</h3>
+      <div class="route">Route A</div>
+      <div class="route">Route B</div>
+      <div class="route">Route C</div>
+    </aside>
+    <main>
+      <h2>Find Your Shuttle</h2>
+      <input placeholder="From: Starting point">
+      <input placeholder="To: Destination">
+      <button>Find Route</button>
+      <div class="map">
+        Interactive Campus Map Coming Soon
+      </div>
+    </main>
+  </div>
+</body>
+</html>
