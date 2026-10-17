@@ -1,0 +1,4 @@
+Lehigh Transit v2 preview
+Prepared: 2026-10-17
+Data snapshot: 2026-10-17; Fall 2026 service hours
+Entry: index.html

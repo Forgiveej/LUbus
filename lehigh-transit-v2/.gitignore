@@ -1,0 +1,5 @@
+maptiler-config.local.js
+dist/
+__pycache__/
+.DS_Store
+backups/
