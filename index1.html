@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lehigh Bus Navigator</title>
+    <!-- 引入 Leaflet 真实地图样式表 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style1.css">
+</head>
+<body>
+
+    <div class="app">
+        <!-- 左侧 Sidebar 导航栏 -->
+        <aside class="sidebar">
+            <h2>🚌 Campus Routes</h2>
+            <ul class="route-list" id="route-list">
+                <!-- 线路列表由 script.js 动态生成 -->
+            </ul>
+
+            <div style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <h2>🌐 Regional Hub</h2>
+                <div id="connections-container"></div>
+            </div>
+        </aside>
+
+        <!-- 右侧主内容区 Main Content -->
+        <main class="main">
+            <header class="header">
+                <h1>🚌 Lehigh Bus Navigator</h1>
+                <div id="external-links"></div>
+            </header>
+
+            <!-- 路线查询表单 Route Planner -->
+            <form class="search-bar" id="search-form">
+                <div class="input-group">
+                    <label for="start-stop">From / 起点：</label>
+                    <select id="start-stop" required>
+                        <option value="">请选择出发站点...</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="end-stop">To / 终点：</label>
+                    <select id="end-stop" required>
+                        <option value="">请选择到达站点...</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-find">Find Route</button>
+            </form>
+
+            <!-- 地图展示区域 -->
+            <div id="map-container">
+                <div id="map"></div>
+            </div>
+
+            <!-- 路线查询结果与线路信息展示区 -->
+            <div id="display-area" class="info-card">
+                <p style="color: var(--text-muted);">👈 请在左侧选择线路查看全貌，或在上方选择起点和终点进行路线规划。</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- 引入 Leaflet 地图 JavaScript 库 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script1¥.js"></script>
+</body>
+</html>

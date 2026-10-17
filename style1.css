@@ -1,0 +1,176 @@
+/* Lehigh Brand Style Variables */
+:root {
+  --lehigh-brown: #653819;
+  --lehigh-brown-dark: #4a2812;
+  --bg-main: #f4f4f6;
+  --bg-sidebar: #ffffff;
+  --sidebar-item: #f0f0f2;
+  --sidebar-item-hover: #e2d7cf;
+  --border: #e0e0e0;
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg-main);
+  line-height: 1.5;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+  border-top: 4px solid var(--lehigh-brown);
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: 270px;
+  flex-shrink: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 1rem;
+}
+
+.sidebar h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--lehigh-brown);
+}
+
+.route-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.route-item {
+  background: var(--sidebar-item);
+  padding: 0.75rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.route-item:hover, .route-item.active {
+  background: var(--sidebar-item-hover);
+  font-weight: 600;
+  border-left: 4px solid var(--lehigh-brown);
+}
+
+/* Main Content Area */
+.main {
+  flex: 1;
+  padding: 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--lehigh-brown);
+}
+
+/* Route Planner Search Bar */
+.search-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  background: #ffffff;
+  padding: 1.2rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.input-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.search-bar select {
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #fff;
+  outline: none;
+}
+
+.search-bar select:focus {
+  border-color: var(--lehigh-brown);
+  box-shadow: 0 0 0 2px rgba(101, 56, 25, 0.15);
+}
+
+.btn-find {
+  padding: 0.65rem 1.4rem;
+  background: var(--lehigh-brown);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  height: 42px;
+  transition: background 0.2s;
+}
+
+.btn-find:hover {
+  background: var(--lehigh-brown-dark);
+}
+
+/* Map Container */
+#map-container {
+  width: 100%;
+}
+
+#map {
+  height: 420px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Info Card / Result Display */
+.info-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+@media (max-width: 768px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+  .search-bar { flex-direction: column; align-items: stretch; }
+  .header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+}
