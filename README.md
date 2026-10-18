@@ -2,11 +2,33 @@
 
 ### A smarter, simpler way to navigate Lehigh University.
 
-**LUbus** is a student-built web application designed to make campus transportation at Lehigh University easier to understand, explore, and use.
+**LUbus** is a student-built web application designed to make campus transportation at Lehigh University easier, clearer, and more accessible.
 
-Developed as a hackathon project, LUbus reimagines the campus transit experience by bringing shuttle routes, walking directions, campus locations, and live bus positions into one interactive map.
+Developed as a hackathon project, LUbus reimagines the campus transit experience by bringing shuttle routes, walking directions, campus locations, and live bus positions together in one interactive map.
 
-**[🌐 Try LUbus](https://forgiveej.github.io/LUbus/)** | **[💻 GitHub Repository](https://github.com/forgiveej/LUbus)**
+<p align="center">
+  <a href="https://forgiveej.github.io/LUbus/">
+    <strong>🌐 Launch LUbus →</strong>
+  </a>
+</p>
+
+<p align="center">
+  <strong>No installation required. Just open the website and start exploring!</strong>
+</p>
+
+---
+
+## 🚀 Try LUbus
+
+### 🌐 [Open LUbus Online](https://forgiveej.github.io/LUbus/)
+
+LUbus runs directly in your browser.
+
+**No downloads, installations, or account registration required.**
+
+Simply open the link above on your computer or mobile device to explore Lehigh University's campus transportation system.
+
+> **Note:** Some features, including live vehicle positions, walking routes, and location services, require an internet connection. Location access is optional.
 
 ---
 
@@ -16,102 +38,111 @@ Getting around campus should be simple.
 
 However, navigating Lehigh University's transportation system can be confusing, especially for new students who are unfamiliar with campus buildings, shuttle stops, and bus routes.
 
-Students often need to answer basic questions:
+Students often find themselves asking:
 
-- Which shuttle should I take?
-- Where is the nearest bus stop?
-- How do I get from my current location to another campus building?
-- Would walking be more convenient?
-- Where is the shuttle right now?
+- 🚌 Which shuttle should I take?
+- 📍 Where is the nearest bus stop?
+- 🗺️ How do I get from one campus building to another?
+- 🚶 Would walking be more convenient?
+- ⏱️ Where is the shuttle right now?
 
-Finding this information should not require navigating multiple confusing interfaces.
+Finding answers to these questions should not require navigating confusing interfaces or switching between multiple resources.
 
-We believe campus transportation should be intuitive, accessible, and easy to understand.
+**We believe campus transportation should be intuitive, accessible, and easy to understand.**
 
-## 🚀 Our Solution
+---
 
-LUbus brings essential campus transportation information into a single, user-friendly web experience.
+## 🎯 Our Solution
 
-Instead of requiring students to interpret transit information on their own, LUbus helps them explore available routes and understand how to reach their destinations.
+LUbus provides a unified, student-friendly interface for exploring campus transportation.
+
+Instead of requiring students to interpret complex transit information, LUbus helps them understand available routes, find destinations, and plan their journeys.
+
+Our project focuses on three principles:
+
+### ✨ Simplicity
+Transportation information should be easy to find and understand.
+
+### 🌍 Accessibility
+Students should be able to access transportation information directly through a web browser without installing a dedicated application.
+
+### 🧭 Clarity
+Routes, stops, walking connections, and vehicle locations should be presented visually through an interactive map.
 
 Our goal is simple:
 
 > Make getting around Lehigh easier for everyone.
 
-LUbus focuses on three principles:
-
-**Simplicity** — Make transportation information easier to find and understand.
-
-**Accessibility** — Provide a browser-based experience that students can access without installing a dedicated app.
-
-**Clarity** — Present routes, stops, walking connections, and transportation information on an interactive map.
-
 ---
 
 ## ✨ Features
 
-### 🗺️ Interactive Campus Map
+### 🗺️ 1. Interactive Campus Map
 
-Explore Lehigh University and the surrounding Bethlehem area through an interactive map.
+Explore Lehigh University and the surrounding Bethlehem area using an interactive map.
+
+Features include:
 
 - Search for campus buildings and nearby locations.
 - Find locations using building names or abbreviations.
 - Explore campus destinations directly on the map.
-- Switch between available map styles, including road, aerial, and terrain views.
+- Switch between road, aerial, and terrain map views.
 
-### 🚌 Campus Shuttle Information
+### 🚌 2. Campus Shuttle Routes
 
-Explore four campus shuttle routes using the project's published transit data.
+Explore four campus shuttle routes using the project's transit data.
 
-- View campus shuttle routes.
-- Identify bus stops along supported routes.
-- Access route and service-hour information.
-- View available live vehicle positions on the map.
+- View supported shuttle routes.
+- Identify bus stops along each route.
+- Access available route and service-hour information.
+- View available live shuttle positions on the map.
 
 Live vehicle positions refresh approximately every 20 seconds while the relevant map view is visible.
 
-### 🚶 Walking & Transit Route Planning
+### 🚶 3. Walking & Transit Route Planning
 
 Enter a starting point and destination to explore a suggested journey.
 
 Depending on the available route, LUbus can display:
 
-- An estimated journey duration.
+- Estimated journey duration.
 - Walking connections.
 - Suggested shuttle boarding and alighting stops.
-- A visual route on the map.
+- Visual route information on the map.
 
 The current journey planner supports walking and campus transit.
 
-Travel durations are estimates, and bus travel estimates do not include waiting time.
+**Note:** Travel durations are estimates. Shuttle travel estimates do not include waiting time.
 
-### 📍 Location Awareness
+### 📍 4. Location Awareness
 
 With browser location permission, LUbus can display your current position on the map.
 
-Users can also enter a starting location manually.
+Users can also manually enter a starting location.
 
-### ⭐ Saved Places
+Location access is optional.
 
-Save frequently visited locations for convenient access.
+### ⭐ 5. Saved Places
 
-Saved places are stored locally in the browser.
+Save frequently visited campus locations for convenient access.
 
-### 🌍 Multilingual Interface
+Saved places are stored locally in your browser.
+
+### 🌍 6. Multilingual Interface
 
 LUbus supports three interface languages:
 
-- English
-- 中文 (Chinese)
-- Español (Spanish)
+- 🇺🇸 English
+- 🇨🇳 中文 (Chinese)
+- 🇪🇸 Español (Spanish)
 
 English is the default language.
 
 ---
 
-## 🛠️ Technology
+## 🛠️ Technology Stack
 
-LUbus is a browser-based application built primarily with:
+LUbus is built primarily using standard web technologies.
 
 | Technology | Purpose |
 |------------|---------|
@@ -119,69 +150,95 @@ LUbus is a browser-based application built primarily with:
 | CSS | Interface styling and layout |
 | JavaScript | Interactive functionality and route planning |
 | Python | Static-site build process |
-| OpenStreetMap ecosystem | Mapping, place search, and routing resources |
-| GitHub | Source code management and collaboration |
+| OpenStreetMap ecosystem | Mapping, location search, and routing resources |
+| GitHub | Version control and collaboration |
+| GitHub Pages | Public website hosting |
 
-The application uses a static frontend architecture and does not require a traditional application server for its core interface.
+The application uses a static frontend architecture.
 
-External services are used for features such as map tiles, place search, walking routes, and live transit information.
+External services provide resources such as map tiles, location search, walking routes, and live transit information.
 
 ---
 
 ## 📂 Project Structure
 
-The repository includes the following files:
+The repository includes the following core files:
 
 ```text
 LUbus/
+│
 ├── index.html
 ├── style1.css
 ├── script1.js
+│
 ├── navigation.js
 ├── journey-engine.js
 ├── live-buses.js
+│
 ├── transit-data.js
 ├── schedule-data.js
 ├── campus-places.js
 ├── campus-extras.js
+│
 ├── search-scope.js
 ├── map-config.js
 ├── i18n-es.js
+│
 ├── build.py
 ├── SOURCE-MANIFEST.json
 ├── VERSION.txt
+│
 └── README.md
 ```
 
-Key components include:
+### Core Components
 
-- `index.html` — Main application entry point.
-- `style1.css` — Application styling.
-- `script1.js` — Main frontend functionality.
-- `journey-engine.js` — Campus journey planning logic.
-- `live-buses.js` — Live shuttle vehicle information.
-- `transit-data.js` — Campus transit route data.
-- `schedule-data.js` — Transit schedule information.
-- `campus-places.js` — Campus location data.
-- `map-config.js` — Map configuration.
-- `build.py` — Static build script.
+| File | Description |
+|------|-------------|
+| `index.html` | Main application entry point |
+| `style1.css` | User interface styling |
+| `script1.js` | Main frontend functionality |
+| `navigation.js` | Navigation functionality |
+| `journey-engine.js` | Journey planning logic |
+| `live-buses.js` | Live shuttle information |
+| `transit-data.js` | Campus shuttle route data |
+| `schedule-data.js` | Transit schedule information |
+| `campus-places.js` | Campus location data |
+| `map-config.js` | Map configuration |
+| `build.py` | Static build script |
 
 ---
 
-## 💻 Getting Started
+## 💻 Local Development
 
-LUbus can be run locally without installing a JavaScript framework or configuring a map API key.
+> **For developers only.**
+>
+> If you simply want to use LUbus, visit the
+> **[official LUbus website](https://forgiveej.github.io/LUbus/)**.
+>
+> You do not need to follow these steps to use the online application.
 
-### 1. Clone the repository
+If you want to run LUbus locally, modify its source code, or test new features, follow the instructions below.
+
+### Step 1 — Clone the Repository
+
+Open your terminal and run:
 
 ```bash
 git clone https://github.com/forgiveej/LUbus.git
+```
+
+Navigate to the project directory:
+
+```bash
 cd LUbus
 ```
 
 Alternatively, download the repository as a ZIP file and extract it.
 
-### 2. Start a local server
+### Step 2 — Start a Local Server
+
+LUbus should be served through a local HTTP server rather than opened directly using a `file://` URL.
 
 On macOS or Linux:
 
@@ -195,25 +252,39 @@ On Windows:
 py -m http.server 8765 --bind 127.0.0.1
 ```
 
-### 3. Open the application
+Keep the terminal running.
 
-Visit:
+### Step 3 — Open the Local Application
 
-http://127.0.0.1:8765/
+Once the local server has started, open your browser and visit:
 
-Allow location access if you want to display your current position.
+**http://127.0.0.1:8765/**
 
-You can also manually enter a starting location.
+You can now test LUbus locally.
 
-**Important:** Use a local HTTP server rather than opening `index.html` directly through a `file://` URL.
+> ⚠️ **Important**
+>
+> `127.0.0.1` is a local address that refers to your own computer.
+>
+> It will only work if you have started the local server.
+>
+> If you receive a "Connection Refused" error, make sure the server is running.
+>
+> This address is not the public LUbus website.
+>
+> To access LUbus without any setup, use:
+>
+> **https://forgiveej.github.io/LUbus/**
 
 ---
 
 ## 🌐 Deployment
 
-The project includes a Python build script for preparing static deployment files.
+LUbus is designed to work as a static web application.
 
-Run:
+### Build for Deployment
+
+The repository includes a Python build script:
 
 ```bash
 python3 build.py
@@ -221,9 +292,13 @@ python3 build.py
 
 This generates a `dist/` directory containing the deployable application.
 
-The generated files can be published to a compatible static hosting service.
+The generated files can be published to a compatible static hosting platform.
 
-The repository also contains the source files needed for local development.
+### Public Website
+
+The project is available through GitHub Pages:
+
+**https://forgiveej.github.io/LUbus/**
 
 ---
 
@@ -231,7 +306,7 @@ The repository also contains the source files needed for local development.
 
 LUbus uses publicly available campus transportation information and external mapping resources.
 
-Relevant sources and services include:
+Relevant sources include:
 
 - [Lehigh University Transit Route Information](https://auxiliaryservices.lehigh.edu/transit-route-information)
 - [Lehigh Passio GO](https://lehigh.passiogo.com/)
@@ -241,7 +316,7 @@ Relevant sources and services include:
 - [FOSSGIS Routing Service](https://routing.openstreetmap.de/about.html)
 - [USGS National Map](https://www.usgs.gov/programs/national-geospatial-program/national-map)
 
-We acknowledge the organizations and contributors who maintain these resources.
+We acknowledge the organizations, developers, and contributors who maintain these resources.
 
 ---
 
@@ -251,29 +326,35 @@ LUbus is a student-developed project and should not be treated as an official tr
 
 Please note:
 
-- Shuttle locations depend on the availability and accuracy of external transit data.
-- Live GPS positions do not represent guaranteed arrival predictions.
+- Shuttle positions depend on external transit data availability and accuracy.
+- Live GPS positions do not guarantee accurate arrival predictions.
 - Estimated journey durations may differ from actual travel times.
-- Bus travel estimates exclude waiting time.
+- Shuttle travel estimates exclude waiting time.
 - Published service-hour information may become outdated.
 - Map tiles, place search, routing, and live transit information require an internet connection.
 - Browser location access requires user permission.
 - Saved places are stored locally and are not synchronized across devices.
-- The application does not currently provide driving navigation or active journey tracking.
+- The application does not currently support driving navigation or active journey tracking.
 
-For official service changes and transportation announcements, refer to Lehigh University's transportation resources.
+For official transportation updates, refer to Lehigh University's transportation resources.
 
 ---
 
-## 🎯 Project Vision
+## 🔮 Project Vision
 
 LUbus started with a simple observation:
 
 **Students should not have to struggle with transportation software just to get around their own campus.**
 
-By combining familiar web technologies with campus-specific transportation information, our project explores how a more intuitive interface can improve the everyday student experience.
+As students navigating Lehigh ourselves, we wanted to explore how a more intuitive interface could improve the everyday campus experience.
 
-We hope LUbus can serve as a foundation for further improvements to campus mobility and transportation accessibility.
+Our hackathon project demonstrates how accessible web technologies, thoughtful interface design, and campus-specific transit information can be brought together to create a more user-friendly transportation experience.
+
+LUbus is more than an exercise in building a website.
+
+It is an exploration of how technology can solve everyday problems within our own university community.
+
+We hope LUbus can serve as a foundation for future improvements in campus mobility, usability, and transportation accessibility.
 
 ---
 
@@ -281,33 +362,44 @@ We hope LUbus can serve as a foundation for further improvements to campus mobil
 
 LUbus is a collaborative student project.
 
-Suggestions, bug reports, and contributions are welcome.
+Suggestions, bug reports, and contributions are welcome!
 
-To propose an improvement:
+To contribute:
 
-1. Open an issue describing the problem or suggestion.
-2. Fork the repository.
-3. Create a branch for your changes.
-4. Submit a pull request.
+1. Open an issue describing a problem or feature suggestion.
+2. Fork this repository.
+3. Create a new branch for your changes.
+4. Make and test your improvements.
+5. Submit a pull request.
 
-Please keep contributions focused on usability, reliability, accessibility, and accurate transportation information.
+We welcome contributions focused on:
+
+- User experience and interface improvements.
+- Accessibility.
+- Transportation data accuracy.
+- Performance and reliability.
+- Bug fixes.
 
 ---
 
 ## 📌 Disclaimer
 
-LUbus is an independent student project created for educational and hackathon purposes.
+LUbus is an independent student project developed for educational and hackathon purposes.
 
 It is not an official Lehigh University application and is not affiliated with or endorsed by Lehigh University or Passio Technologies.
 
-Official transportation information and announcements should always take precedence.
+Official university transportation information and announcements should always take precedence.
 
 ---
 
-<p align="center">
-  Built by students, for students. ❤️
-</p>
+<div align="center">
 
-<p align="center">
-  <strong>Making every campus journey a little easier.</strong>
-</p>
+### 🚌 LUbus
+
+**Built by students, for students. ❤️**
+
+*Making every campus journey a little easier.*
+
+**[🌐 Try LUbus](https://forgiveej.github.io/LUbus/)** · **[💻 View Source](https://github.com/forgiveej/LUbus)**
+
+</div>
