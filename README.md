@@ -303,7 +303,7 @@ Official university transportation information and announcements should always t
 
 ### 🚌 LUbus
 
-**Built by students, for students. ❤️**
+**Built by students, for students.**
 
 *Making every campus journey a little easier.*
 
