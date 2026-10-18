@@ -1,200 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lehigh Shuttle+</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f6fa;
-    }
-    header {
-      background: #653819;
-      color: white;
-      padding: 20px 30px;
-      font-size: 24px;
-      font-weight: bold;
-    }
-    .container {
-      display: flex;
-      min-height: 85vh;
-    }
-    aside {
-      width: 220px;
-      background: white;
-      padding: 24px;
-      border-right: 1px solid #ddd;
-    }
-    .route {
-      padding: 15px;
-      margin-bottom: 10px;
-      background: #f0f0f0;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .route:hover {
-      background: #eadbcf;
-    }
-    main {
-      flex: 1;
-      padding: 30px;
-    }
-    input,
-    button {
-      padding: 12px;
-      margin: 5px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-    }
-    button {
-      background: #653819;
-      color: white;
-      cursor: pointer;
-      border: none;
-    }
-    .controls {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    #map {
-      margin-top: 25px;
-      height: 450px;
-      border-radius: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-    }
-    #note {
-      margin-top: 8px;
-      color: #666;
-      font-size: 13px;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lehigh Transit · Campus Navigator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style1.css">
 </head>
 <body>
-  <header>🚌 Lehigh Shuttle+</header>
-  <div class="container">
-    <aside>
-      <h3>Bus Routes</h3>
-      <div class="route">Route A</div>
-      <div class="route">Route B</div>
-      <div class="route">Route C</div>
-    </aside>
-    <main>
-      <h2>Find Your Shuttle</h2>
-      <div class="controls">
-        <input id="origin" placeholder="From: Starting point" size="35" />
-        <input id="destination" placeholder="To: Destination" size="35" />
-        <button id="findRoute">Find Route</button>
-        <button id="clearRoute" style="background:#999">Clear</button>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Campus transit">
+      <header class="brand">
+        <button id="menu-toggle" class="menu-toggle" type="button" aria-expanded="false" aria-controls="sidebar-content" data-title="openMenu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="4"/><path d="M5 10h14M8 19v2m8-2v2M8 6h8"/><circle cx="8.5" cy="15" r=".7"/><circle cx="15.5" cy="15" r=".7"/></svg></span>
+        <div><h1>Lehigh<span>Transit</span></h1><p data-i18n="brandSub"></p></div>
+      </header>
+      <div id="sidebar-content" class="sidebar-scroll" hidden>
+        <section class="routes-section">
+          <div class="section-header"><h2 data-i18n="campusRoutes"></h2><span class="count-pill">4</span></div>
+          <p id="today-date" class="today-date"></p>
+          <ul id="route-list" class="route-list"></ul>
+        </section>
+        <section id="display-area" class="route-detail" aria-live="polite"></section>
+        <footer class="sidebar-footer">
+          <div class="source-stamp"><span class="source-dot"></span><span data-i18n="officialData"></span></div>
+          <p data-i18n="serviceCaveat"></p>
+          <div class="footer-links"><a href="https://lehigh.passiogo.com/" target="_blank" rel="noopener" data-i18n="liveTracking"></a><a href="https://auxiliaryservices.lehigh.edu/transit-route-information" target="_blank" rel="noopener" data-i18n="officialSchedules"></a></div>
+        </footer>
       </div>
-      <div id="note">Tip: start typing an address or building name (autocomplete enabled).</div>
-      <div id="map">Loading map…</div>
+    </aside>
+    <main class="map-workspace" aria-label="Campus bus map">
+      <div id="map"></div>
+      <div class="map-route-chip" hidden><span id="chip-dot"></span><div><strong id="chip-title"></strong><small id="live-status" role="status"></small></div><button id="clear-route" type="button" class="clear-route" data-title="clearRoute">×</button></div>
+      <div class="floating-tools">
+        <div class="map-actions"><button id="campus-home" type="button" data-i18n="campusHome"></button><button id="map-style-toggle" type="button" aria-expanded="false" aria-controls="map-style-panel" data-i18n="mapStyles"></button><button id="favorites-toggle" type="button" aria-expanded="false" aria-controls="favorites-panel"><span aria-hidden="true">★</span> <span data-i18n="savedPlaces"></span></button></div><section id="map-style-panel" class="utility-panel" hidden></section><section id="favorites-panel" class="utility-panel" hidden><h2 data-i18n="savedPlaces"></h2><p class="utility-note" data-i18n="savedLocal"></p><div id="favorites-list"></div></section>
+        <div class="language-control"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18M12 3c-5 5-5 13 0 18"/></svg><button type="button" data-lang="en">EN</button><span></span><button type="button" data-lang="es">ES</button><span></span><button type="button" data-lang="zh">中文</button></div>
+      </div>
+      <div class="planner-positioner">
+        <form id="search-form" class="search-panel compact">
+          <div class="directions-toolbar">
+            <button id="close-directions" class="close-directions" type="button" data-title="closeRoute"><span class="close-route-icon" aria-hidden="true">×</span><span data-i18n="closeRoute"></span></button>
+            <div id="travel-modes" class="travel-modes" role="group" aria-label="Travel mode"><button type="button" data-mode="transit" aria-pressed="true">🚌 <span data-i18n="modeTransit"></span></button><button type="button" data-mode="walk" aria-pressed="false">↟ <span data-i18n="modeWalk"></span></button></div>
+          </div>
+          <div class="planner-fields">
+            <div class="field-line origin-field"><span class="origin-dot" aria-hidden="true"></span><div class="field-content"><label for="start-stop" data-i18n="from"></label><input id="start-stop" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="start-suggestions" aria-expanded="false"><div id="start-suggestions" class="place-suggestions" role="listbox" hidden></div></div></div>
+            <div class="field-line destination-field"><span class="destination-pin" aria-hidden="true"></span><div class="field-content"><label for="end-stop" data-i18n="to"></label><input id="end-stop" type="text" autocomplete="off" spellcheck="false" required role="combobox" aria-autocomplete="list" aria-controls="end-suggestions" aria-expanded="false"><div id="end-suggestions" class="place-suggestions" role="listbox" hidden></div></div><button id="destination-search" class="destination-search" type="submit" data-title="searchPlaces" aria-label="Search places"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button></div>
+            <button type="button" id="swap-stops" class="swap-button" data-title="swap" aria-label="Swap stops">⇅</button>
+          </div>
+          <button id="find-button" type="submit" class="find-button"><span data-i18n="findRoute"></span><span aria-hidden="true">→</span></button>
+          <div class="save-destination-row"><button id="favorite-place" type="button" disabled></button></div><div id="search-result" class="search-result" aria-live="polite" hidden></div><p class="search-scope" data-i18n="scopeNote"></p><p class="search-attribution"><span data-i18n="searchPowered"></span> <a href="https://photon.komoot.io/" target="_blank" rel="noopener">Photon · © OpenStreetMap</a> · <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener">OSRM</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener" data-i18n="fixMap"></a></p>
+        </form>
+      </div>
+      <aside id="live-widget" class="live-widget" aria-live="polite" hidden><div><strong id="live-widget-title"></strong><small data-i18n="liveAuto"></small></div><button id="live-refresh" type="button" data-title="refreshBuses">↻</button><p id="live-widget-message"></p></aside>
+      <div id="saved-feedback" class="saved-feedback" role="status" hidden></div>
+      <div id="map-status" class="map-status" role="status" hidden></div>
+      <button id="locate-me" class="locate-me" type="button" data-title="myLocation"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg></button><div id="location-status" class="location-status" role="status" hidden></div>
+      <button id="fit-route" class="fit-route" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="8" y="8" width="8" height="8" rx="2"/></svg><span data-i18n="fitRoute"></span></button>
+      <div class="map-caption"><span data-i18n="mapCaption"></span><span class="caption-divider">·</span><span data-i18n="dataChecked"></span></div>
     </main>
   </div>
-
-  <script>
-    // Map variables
-    let map;
-    let directionsService;
-    let directionsRenderer;
-    let originAutocomplete;
-    let destinationAutocomplete;
-
-    function initMap() {
-      // Lehigh University approximate center
-      const lehighCenter = { lat: 40.6063, lng: -75.3721 };
-
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: lehighCenter,
-        zoom: 15,
-        mapTypeControl: false,
-      });
-
-      directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({
-        map: map,
-        suppressMarkers: false
-      });
-
-      // Autocomplete for inputs (Places library must be loaded)
-      const originInput = document.getElementById("origin");
-      const destinationInput = document.getElementById("destination");
-
-      originAutocomplete = new google.maps.places.Autocomplete(originInput, { fields: ["place_id","geometry","name","formatted_address"] });
-      destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, { fields: ["place_id","geometry","name","formatted_address"] });
-
-      // Optional: bias results to map bounds
-      originAutocomplete.bindTo("bounds", map);
-      destinationAutocomplete.bindTo("bounds", map);
-
-      // Hook up buttons
-      document.getElementById("findRoute").addEventListener("click", () => {
-        calculateAndDisplayRoute();
-      });
-
-      document.getElementById("clearRoute").addEventListener("click", () => {
-        directionsRenderer.set("directions", null);
-        originInput.value = "";
-        destinationInput.value = "";
-        map.setCenter(lehighCenter);
-        map.setZoom(15);
-      });
-
-      // Allow pressing Enter to trigger
-      [originInput, destinationInput].forEach(input => {
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            calculateAndDisplayRoute();
-          }
-        });
-      });
-    }
-
-    function calculateAndDisplayRoute() {
-      const originVal = document.getElementById("origin").value.trim();
-      const destinationVal = document.getElementById("destination").value.trim();
-
-      if (!originVal || !destinationVal) {
-        alert("Please enter both origin and destination.");
-        return;
-      }
-
-      directionsService.route(
-        {
-          origin: originVal,
-          destination: destinationVal,
-          travelMode: google.maps.TravelMode.TRANSIT, // shuttle/campus is likely transit; change to DRIVING if needed
-          transitOptions: {
-            // Optional: set preferred routing for transit if desired
-          },
-          provideRouteAlternatives: false
-        },
-        (response, status) => {
-          if (status === "OK") {
-            directionsRenderer.setDirections(response);
-          } else {
-            alert("Directions request failed due to " + status);
-          }
-        }
-      );
-    }
-  </script>
-
-  <!--
-    IMPORTANT:
-    1) Replace YOUR_API_KEY below with your Google Maps JavaScript API key.
-    2) Enable these APIs in Google Cloud Console for that key:
-       - Maps JavaScript API
-       - Places API (for autocomplete)
-       - Directions API (for route drawing / directions)
-    3) Restrict the key to your site (HTTP referrers) and specific APIs.
-    4) Billing must be enabled on the project (Maps APIs require billing even for free-tier usage).
-  -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap&libraries=places" async defer></script>
+  <dialog id="schedule-dialog" aria-labelledby="schedule-title">
+    <div class="dialog-top"><div><p class="eyebrow" data-i18n="weeklySchedule"></p><h2 id="schedule-title"></h2></div><button type="button" id="close-schedule" class="close-button" data-title="close">×</button></div>
+    <p id="schedule-intro" class="dialog-intro"></p>
+    <div id="schedule-body"></div>
+    <p id="schedule-note" class="schedule-note"></p>
+    <a class="schedule-source" href="https://auxiliaryservices.lehigh.edu/transit-route-information" target="_blank" rel="noopener" data-i18n="viewOfficial"></a>
+  </dialog>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="map-config.js"></script>
+  <script src="transit-data.js"></script>
+  <script src="schedule-data.js"></script>
+  <script src="campus-places.js"></script>
+  <script src="search-scope.js"></script>
+  <script src="journey-engine.js"></script>
+  <script src="live-buses.js"></script>
+  <script src="script1.js"></script>
+  <script src="navigation.js"></script>
+  <script src="i18n-es.js"></script>
+  <script src="campus-extras.js"></script>
 </body>
 </html>

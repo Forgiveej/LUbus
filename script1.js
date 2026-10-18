@@ -1,328 +1,214 @@
-/**
- * Lehigh Bus Navigator - Production Core Engine
- * 核心功能：
- * 1. 按线路严格隔离站点 Marker，实现点击线路仅呈现专属站点。
- * 2. 接入 OSRM 路由引擎，实现轨迹贴合真实公路网延伸。
- * 3. 基于 Leaflet LayerGroup 内存管理机制，实现无缝图层销毁与重构。
- */
-
-// 1. Lehigh 官方站点与线路精细数据库 (基于 Passio GO 数据校准)
-const transitData = {
-  stops: {
-    "saucon": { id: "saucon", name: "Saucon Village", lat: 40.58220, lng: -75.35110 },
-    "cundey_nb": { id: "cundey_nb", name: "Cundey Varsity House NB", lat: 40.58610, lng: -75.35280 },
-    "goodman_circle_nb": { id: "goodman_circle_nb", name: "Goodman Campus Circle NB", lat: 40.58835, lng: -75.35400 },
-    "building_c_nb": { id: "building_c_nb", name: "Building C NB", lat: 40.59850, lng: -75.36210 },
-    "iacocca_nb": { id: "iacocca_nb", name: "Iacocca Hall NB", lat: 40.60010, lng: -75.36500 },
-    "atlss_nb": { id: "atlss_nb", name: "ATLSS / Imbt Lab NB", lat: 40.60120, lng: -75.36720 },
-    "jordan_nb": { id: "jordan_nb", name: "Jordan Hall NB", lat: 40.60310, lng: -75.37050 },
-    "house_99": { id: "house_99", name: "House 99", lat: 40.60480, lng: -75.37310 },
-    "gamma_phi_beta": { id: "gamma_phi_beta", name: "Gamma Phi Beta", lat: 40.60520, lng: -75.37420 },
-    "pi_beta_phi": { id: "pi_beta_phi", name: "Pi Beta Phi", lat: 40.60580, lng: -75.37510 },
-    "taylor_nb": { id: "taylor_nb", name: "Taylor College NB", lat: 40.60630, lng: -75.37600 },
-    "alumni": { id: "alumni", name: "Alumni Memorial Building", lat: 40.60890, lng: -75.37920 },
-    "steps": { id: "steps", name: "S.T.E.P.S.", lat: 40.60730, lng: -75.37880 },
-    "packer_ave": { id: "packer_ave", name: "Packer Avenue Bus Stop", lat: 40.60815, lng: -75.37710 },
-    "farrington": { id: "farrington", name: "Farrington Square", lat: 40.60910, lng: -75.37580 },
-    "whitaker": { id: "whitaker", name: "Whitaker Lab", lat: 40.60780, lng: -75.37520 },
-    "williams": { id: "williams", name: "Williams Hall", lat: 40.60710, lng: -75.37610 },
-    "drown": { id: "drown", name: "Drown Hall", lat: 40.60660, lng: -75.37680 },
-    "taylor_sb": { id: "taylor_sb", name: "Taylor College SB", lat: 40.60620, lng: -75.37610 },
-    "sigma_phi_epsilon": { id: "sigma_phi_epsilon", name: "Sigma Phi Epsilon", lat: 40.60560, lng: -75.37500 },
-    "house_93": { id: "house_93", name: "House 93", lat: 40.60490, lng: -75.37350 },
-    "alpha_phi": { id: "alpha_phi", name: "Alpha Phi", lat: 40.60440, lng: -75.37280 },
-    "atlss_sb": { id: "atlss_sb", name: "ATLSS / Imbt Lab SB", lat: 40.60115, lng: -75.36725 },
-    "iacocca_sb": { id: "iacocca_sb", name: "Iacocca Hall SB", lat: 40.60005, lng: -75.36505 },
-    "building_c_sb": { id: "building_c_sb", name: "Building C SB", lat: 40.59845, lng: -75.36215 },
-    "jordan_sb": { id: "jordan_sb", name: "Jordan Hall SB", lat: 40.60305, lng: -75.37055 },
-    "cundey_sb": { id: "cundey_sb", name: "Cundey Varsity House SB", lat: 40.58605, lng: -75.35285 },
-    "goodman_circle_sb": { id: "goodman_circle_sb", name: "Goodman Campus Circle SB", lat: 40.58830, lng: -75.35405 }
-  },
-
-  routes: [
-    {
-      id: "campus-connector",
-      name: "Campus Connector",
-      shortName: "CC",
-      color: "#3D6657",
-      description: "全校区核心干线，连接 Asa Packer, Mountaintop, Goodman 及 Saucon Village。",
-      stops: [
-        "saucon", "cundey_nb", "goodman_circle_nb", "building_c_nb", "iacocca_nb", 
-        "atlss_nb", "jordan_nb", "house_99", "gamma_phi_beta", "pi_beta_phi", 
-        "taylor_nb", "alumni", "steps", "packer_ave", "farrington", 
-        "whitaker", "williams", "drown", "taylor_sb", "sigma_phi_epsilon", 
-        "house_93", "alpha_phi", "atlss_sb", "iacocca_sb", "building_c_sb", 
-        "jordan_sb", "cundey_sb", "goodman_circle_sb"
-      ]
-    },
-    {
-      id: "packer-express",
-      name: "Packer Express",
-      shortName: "PE",
-      color: "#653819",
-      description: "围绕 Asa Packer 主校区的局域高频循环巴士。",
-      stops: [
-        "house_99", "gamma_phi_beta", "pi_beta_phi", "taylor_nb", "alumni", 
-        "steps", "packer_ave", "farrington", "whitaker", "williams", 
-        "drown", "taylor_sb", "sigma_phi_epsilon", "house_93", "alpha_phi"
-      ]
-    },
-    {
-      id: "mountaintop-connector",
-      name: "Mountaintop Connector",
-      shortName: "MC",
-      color: "#21a19a",
-      description: "主校区往返 Mountaintop 山顶校区的专线巴士。",
-      stops: ["packer_ave", "alumni", "jordan_nb", "iacocca_nb"]
-    },
-    {
-      id: "goodman-connector",
-      name: "Goodman Connector",
-      shortName: "GC",
-      color: "#8B5E3C",
-      description: "主校区往返 Goodman 体育校区与 Stabler Arena 的专线巴士。",
-      stops: ["packer_ave", "alumni", "building_c_nb", "goodman_circle_nb", "cundey_nb"]
-    }
-  ],
-
-  connections: [
-    { name: "LANTA Regional Transit Hub", address: "635 Guetter St, Bethlehem, PA", routes: "102, 103, 108" }
-  ],
-  links: {
-    liveTracking: "https://lehigh.passiogo.com/",
-    officialSchedules: "https://auxiliaryservices.lehigh.edu/transit-route-information"
-  }
+'use strict';
+const transitData = window.LEHIGH_TRANSIT_DATA;
+const schedules = window.LEHIGH_SCHEDULES;
+const $ = id => document.getElementById(id);
+const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const copy = {
+ en: {
+  brandSub:'CAMPUS NAVIGATOR',campusRoutes:'Campus routes',today:'Today',todayDate:'Campus time · Eastern',
+  planRide:'Where are you headed?',campusOnly:'Campus',from:'From',to:'To',chooseStart:'Choose a departure stop',chooseEnd:'Choose a destination stop',findRoute:'Routes',swap:'Swap departure and destination',fitRoute:'Fit route',
+  officialData:'Official routes, thoughtfully mapped',serviceCaveat:'Published Fall 2026 hours. Holiday changes and service alerts may apply. Times shown in Eastern Time.',liveTracking:'Live buses ↗',officialSchedules:'Official schedules ↗',
+  dataChecked:'DATA CHECKED · 17 OCT 2026',mapCaption:'LEHIGH UNIVERSITY · ROUTE MAP',weeklySchedule:'WEEKLY SERVICE HOURS',close:'Close schedule',weeklyIntro:'Regular Fall 2026 service · Monday–Sunday · Eastern Time',
+  weeklyNote:'“Next day” means after midnight. This is the regular weekly timetable, not live vehicle availability. Holiday and limited-service schedules may differ.',viewOfficial:'View official schedule and holiday changes ↗',
+  noService:'No scheduled service',holiday:'No service · holiday',limited:'Limited service',regular:'Regular service',nextDay:'next day',every:'Every {n} min',perBus:'per bus',vehicle:'Bus {n}',after23:'Every 30 min until 23:00; later headway not specified',
+  selectedRoute:'EXPLORE THIS ROUTE',stops:'stops',viewStops:'View all {n} stops',viewWeek:'View the full week',todayService:'Today’s service hours',directionNote:'NB = northbound · SB = southbound. Stops follow the published circular route.',
+  sameStop:'Choose two different stops.',noMatch:'No direct route matches these directional stops. Check Passio GO for connections.',direct:'Direct route',segments:'{n} stop segments',alternatives:'Also connects',searchNote:'Matches stop order only. Check today’s hours and live buses before travelling.',
+  mapMissing:'Map configuration unavailable. Please refresh the page.',mapError:'Basemap unavailable. Check your connection and try again.',
+  weekDays:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+  sourceDate:'Stop and route data checked 17 Oct 2026. Official route pages and Passio may differ; this map follows Passio GO.',
+  scope:['Asa Packer · Sayre','Asa Packer · Mountaintop','Asa Packer · Goodman','All campuses · Saucon Village'],
+  routeNames:['Packer Express','Mountaintop Connector','Goodman Connector','Campus Connector'],
+  descriptions:['A circular route around Asa Packer and Sayre. Runs in fall and spring semesters; no summer service.','Connects Asa Packer and Mountaintop, via Building C, Iacocca Hall and ATLSS.','Connects Asa Packer and Goodman, including Goodman Campus Circle and Cundey Varsity House.','Connects Asa Packer, Mountaintop, Goodman and Saucon Village, with separate stops for each direction.']
+ },
+ zh: {
+  brandSub:'校园出行导航',campusRoutes:'校园公交线路',today:'今天',todayDate:'校园时间 · 美国东部',
+  planRide:'今天想去哪里？',campusOnly:'校园出行',from:'出发站',to:'到达站',chooseStart:'选择出发站点',chooseEnd:'选择到达站点',findRoute:'路线',swap:'交换出发站和到达站',fitRoute:'查看整条线路',
+  officialData:'官方线路，清晰呈现',serviceCaveat:'采用官网 2026 年秋季时刻表；节假日及临时调整以官方公告为准。全部时间为美国东部时间。',liveTracking:'实时车辆 ↗',officialSchedules:'官方时刻表 ↗',
+  dataChecked:'数据核查 · 2026-10-17',mapCaption:'理海大学 · 公交线路图',weeklySchedule:'一周运营时间',close:'关闭时间表',weeklyIntro:'2026 年秋季常规班次 · 周一至周日 · 美国东部时间',
+  weeklyNote:'“次日”表示跨过午夜后的时间。这里是常规周时刻表，不是实时车辆状态；节假日和缩减运营日可能调整。',viewOfficial:'查看官网时刻表与节假日调整 ↗',
+  noService:'无计划班次',holiday:'节假日停运',limited:'缩减运营',regular:'常规运营',nextDay:'次日',every:'约 {n} 分钟一班',perBus:'每辆',vehicle:'车辆 {n}',after23:'23:00 前约 30 分钟一班；之后间隔未注明',
+  selectedRoute:'当前线路',stops:'个站点',viewStops:'查看全部 {n} 个站点',viewWeek:'查看一周时间表',todayService:'今日运营时间',directionNote:'NB = 北向，SB = 南向；按官方站序循环，末站接回首站。',
+  sameStop:'请选择两个不同的站点。',noMatch:'这两个方向站点之间暂无匹配的直达线路，请通过 Passio GO 查询换乘。',direct:'可直达线路',segments:'{n} 段站间路程',alternatives:'其他直达线路',searchNote:'按站序匹配，不计算实时等车时间；出发前请核对当天时段与实时车辆。',
+  mapMissing:'地图配置暂时不可用，请刷新页面。',mapError:'地图底图暂时无法加载，请检查网络后重试。',
+  weekDays:['周日','周一','周二','周三','周四','周五','周六'],
+  sourceDate:'站点和轨迹核查于 2026-10-17。官网旧线路页与 Passio 存在差异，此地图采用 Passio GO 数据。',
+  scope:['Asa Packer · Sayre 校区','主校区 · 山顶校区','主校区 · Goodman 校区','全校区 · Saucon Village'],
+  routeNames:['Packer 快线','Mountaintop 接驳线','Goodman 接驳线','全校区接驳线'],
+  descriptions:['环绕 Asa Packer 与 Sayre 校区的循环线路。秋、春学期运行，暑期停运。','连接主校区和山顶校区，途经 Building C、Iacocca Hall 和 ATLSS。','连接主校区与 Goodman，服务 Goodman Campus Circle 和 Cundey Varsity House。','连接 Asa Packer、Mountaintop、Goodman 与 Saucon Village，去程与返程分方向设站。']
+ }
 };
-
-// 全局 Web GIS 容器定义
-let map;
-let busStopsLayerGroup;     
-let routePolylineLayerGroup; 
-
-document.addEventListener('DOMContentLoaded', () => {
-    initMap();
-    populateStopDropdowns();
-    renderSidebarRoutes();
-    renderExternalLinks();
-    renderConnections();
-
-    document.getElementById('search-form').addEventListener('submit', handleRouteSearch);
+let language='en';
+try { language = ['en','es','zh'].includes(localStorage.getItem('lehigh-language-v2')) ? localStorage.getItem('lehigh-language-v2') : 'en'; } catch (_) {}
+let basemapLayer;
+let map, activePolyline, stopMarkers, activeRoute = null, routeView = null, dialogRoute = null, searchState = null, currentDateKey, liveBuses;
+Object.assign(copy.en,{closeRoute:'Close route',whereTo:'Where to?',searchPlaces:'Search destinations',backToSearch:'Back to destination search',openMenu:'Open campus routes',closeMenu:'Close campus routes',clearRoute:'Clear selected route'});
+Object.assign(copy.zh,{closeRoute:'关闭路线',whereTo:'想去哪里？',searchPlaces:'搜索目的地',backToSearch:'返回地点搜索',openMenu:'打开校园线路菜单',closeMenu:'收起校园线路菜单',clearRoute:'取消当前线路'});
+function t(key, vars={}) { let value=copy[language]?.[key]??copy.en[key]??key; Object.entries(vars).forEach(([k,v])=>{value=value.replace('{'+k+'}',v);}); return value; }
+function routeIndex(route) { return transitData.routes.findIndex(r=>r.id===route.id); }
+function routeName(route) { return copy[language].routeNames[routeIndex(route)]; }
+function stopName(id) { let name=transitData.stops[id].name; return language==='zh' ? name.replace(/ NB$/,'（北向）').replace(/ SB$/,'（南向）') : language==='es'?name.replace(/ NB$/,' (norte)').replace(/ SB$/,' (sur)'):name; }
+function today() { return schedules.getEasternDate(); }
+function timeRange(w) { return w.start+' – '+(w.endDayOffset ? t('nextDay')+' ' : '')+w.end; }
+function formatWindows(windows, detailed=false) {
+ if (!windows.length) return escapeHTML(t('noService'));
+ return windows.map(w=>{
+  let detail=w.headway ? t('every',{n:w.headway})+(w.vehicle?' · '+t('perBus'):'') : w.noteKey==='lateHeadwayUnspecified'?t('after23'):'';
+  return (w.vehicle?'<span class="vehicle-label">'+escapeHTML(t('vehicle',{n:w.vehicle}))+' · </span>':'')+escapeHTML(timeRange(w))+(detailed&&detail?'<span class="frequency">'+escapeHTML(detail)+'</span>':'');
+ }).join(detailed?'<br>':'<br>');
+}
+function daySummary(route,detailed=false) {
+ const day=schedules.getDaySchedule(route.id,today());
+ if(day.kind==='no-service') return escapeHTML(t('holiday'));
+ return (day.kind==='limited'?escapeHTML(t('limited'))+' · ':'')+formatWindows(day.windows,detailed);
+}
+function dateLabel() {
+ const date=new Date(today()+'T12:00:00Z');
+ return new Intl.DateTimeFormat(language==='zh'?'zh-CN':language==='es'?'es-US':'en-US',{timeZone:'UTC',month:'short',day:'numeric',weekday:'long'}).format(date);
+}
+function applyLanguage() {
+ document.documentElement.lang=language==='zh'?'zh-CN':language;
+ document.title=language==='zh'?'Lehigh Transit · 校园公交导航':language==='es'?'Lehigh Transit · Navegador del campus':'Lehigh Transit · Campus Navigator';
+ document.querySelector('.sidebar').setAttribute('aria-label',t('campusRoutes'));
+ document.querySelector('.map-workspace').setAttribute('aria-label',t('mapCaption'));
+ document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
+ document.querySelectorAll('[data-title]').forEach(el=>{el.title=t(el.dataset.title);el.setAttribute('aria-label',t(el.dataset.title));});
+ document.querySelectorAll('[data-lang]').forEach(el=>{el.classList.toggle('active',el.dataset.lang===language);el.setAttribute('aria-pressed',String(el.dataset.lang===language));});
+ $('today-date').textContent=dateLabel()+' · '+t('todayDate');
+ $('menu-toggle').title=t($('menu-toggle').getAttribute('aria-expanded')==='true'?'closeMenu':'openMenu');
+ $('menu-toggle').setAttribute('aria-label',$('menu-toggle').title);
+ liveBuses?.translate();
+ window.LeHighNavigation?.translate(); renderRoutes(); renderDetail(); renderMarkers(); renderChip(); renderSearch();
+ if($('schedule-dialog').open&&dialogRoute) renderWeekly(dialogRoute);
+ window.LeHighCampusExtras?.translate();
+ updateMapStatus();
+ map.zoomControl._zoomInButton.title=language==='zh'?'放大':language==='es'?'Acercar':'Zoom in';
+ map.zoomControl._zoomOutButton.title=language==='zh'?'缩小':language==='es'?'Alejar':'Zoom out';
+ map.zoomControl._zoomInButton.setAttribute('aria-label',map.zoomControl._zoomInButton.title);
+ map.zoomControl._zoomOutButton.setAttribute('aria-label',map.zoomControl._zoomOutButton.title);
+}
+function renderRoutes() {
+ const list=$('route-list'); list.replaceChildren();
+ transitData.routes.forEach(route=>{
+  const li=document.createElement('li'); li.className='route-card'+(activeRoute?.id===route.id?' selected':'');
+  li.style.setProperty('--route-color',route.color); li.style.setProperty('--badge-ink',route.shortName==='GC'?'#fff':'#3e462f');
+  const button=document.createElement('button'); button.type='button';button.className='route-select';button.dataset.routeId=route.id;button.setAttribute('aria-pressed',String(activeRoute?.id===route.id));
+  const day=schedules.getDaySchedule(route.id,today());
+  button.innerHTML='<span class="route-badge">'+route.shortName+'</span><span class="route-copy"><strong>'+escapeHTML(routeName(route))+'</strong><span class="route-scope">'+escapeHTML(copy[language].scope[routeIndex(route)])+'</span><span class="route-today'+(!day.windows.length?' off':'')+'"><b>'+t('today')+'</b>'+daySummary(route)+'</span></span>';
+  button.addEventListener('click',()=>{window.LeHighNavigation?.clearJourney();selectRoute(route);});
+  const info=document.createElement('button');info.type='button';info.className='schedule-info';info.textContent='i';info.setAttribute('aria-label',routeName(route)+' · '+t('weeklySchedule'));info.title=t('viewWeek');info.dataset.scheduleId=route.id;
+  info.addEventListener('click',()=>showWeekly(route));li.append(button,info);list.append(li);
+ });
+}
+function renderChip() {
+ const chip=document.querySelector('.map-route-chip');chip.hidden=!activeRoute;
+ $('fit-route').hidden=!activeRoute&&!window.LeHighNavigation?.hasJourney();
+ if(!activeRoute){$('chip-title').textContent='';$('live-status').textContent='';return;}
+ $('chip-title').textContent=activeRoute.shortName+' · '+routeName(activeRoute);$('chip-dot').style.background=activeRoute.color;
+}
+function renderDetail() {
+ const route=activeRoute;
+ $('display-area').hidden=!route||routeView==='journey';
+ if(!route){$('display-area').replaceChildren();return;}
+ $('display-area').innerHTML='<p class="detail-eyebrow">'+t('selectedRoute')+'</p><div class="detail-heading"><h2>'+escapeHTML(routeName(route))+'</h2><span class="detail-count">'+route.stops.length+' '+t('stops')+'</span></div><p class="detail-description">'+escapeHTML(copy[language].descriptions[routeIndex(route)])+'</p><div class="detail-schedule"><strong>'+t('todayService')+'</strong>'+daySummary(route,true)+'<br><button type="button" class="inline-week">'+t('viewWeek')+' ↗</button></div><details class="stops-disclosure"><summary>'+t('viewStops',{n:route.stops.length})+'</summary><ol class="stop-sequence">'+route.stops.map(id=>'<li>'+escapeHTML(stopName(id))+'</li>').join('')+'</ol><p class="direction-note">'+t('directionNote')+'</p></details>';
+ $('display-area').querySelector('.inline-week').addEventListener('click',()=>showWeekly(route));
+}
+function setDrawer(open) {
+ const sidebar=document.querySelector('.sidebar');sidebar.classList.toggle('open',open);
+ document.querySelector('.app-shell').classList.toggle('drawer-open',open);
+ $('sidebar-content').hidden=!open;$('menu-toggle').setAttribute('aria-expanded',String(open));
+ $('menu-toggle').title=t(open?'closeMenu':'openMenu');$('menu-toggle').setAttribute('aria-label',$('menu-toggle').title);
+ requestAnimationFrame(()=>{map.invalidateSize({animate:false});fitRoute();});
+}
+function mapViewPadding(){
+ const width=$('map').clientWidth,height=$('map').clientHeight,mobile=window.innerWidth<=760;
+ const drawerOpen=$('menu-toggle').getAttribute('aria-expanded')==='true';
+ const planner=$('search-form'),rect=planner?.getBoundingClientRect?.();
+ const expanded=planner?.classList.contains('directions');
+ if((expanded||planner?.classList.contains('route-results'))&&rect){
+  if(!mobile)return {paddingTopLeft:[Math.min(rect.right+22,Math.max(40,width-240)),85],paddingBottomRight:[30,40]};
+  return {paddingTopLeft:[20,Math.min(rect.bottom+16,Math.max(80,height-180))],paddingBottomRight:[20,30]};
+ }
+ if(mobile)return {paddingTopLeft:[20,220],paddingBottomRight:[20,30]};
+ return {paddingTopLeft:[drawerOpen?380:35,110],paddingBottomRight:[30,45]};
+}
+function clearRouteSelection(){
+ if(activePolyline)map.removeLayer(activePolyline);activePolyline=null;activeRoute=null;routeView=null;
+ stopMarkers.clearLayers();liveBuses?.clear();renderRoutes();renderDetail();renderChip();
+}
+function selectRoute(route,fit=true,{journey=false}={}) {
+ if(!route){clearRouteSelection();return;}
+ activeRoute=route;routeView=journey?'journey':'browse';renderRoutes();renderDetail();renderChip();
+ if(activePolyline)map.removeLayer(activePolyline);activePolyline=null;
+ if(!journey)activePolyline=L.polyline(route.path,{color:route.color,weight:5,opacity:.9,lineCap:'round'}).addTo(map);
+ renderMarkers();liveBuses?.selectRoute(route);
+ if(fit)fitRoute();
+}
+function fitRoute() {
+ if(window.LeHighNavigation?.fit())return;
+ if(!activePolyline)return;
+ map.fitBounds(activePolyline.getBounds(),{...mapViewPadding(),maxZoom:16,animate:false});
+}
+function renderMarkers() {
+ stopMarkers.clearLayers();
+ if(!activeRoute||routeView!=='browse')return;
+ [...new Set(activeRoute.stops)].forEach(id=>{
+  const stop=transitData.stops[id];
+  const marker=L.circleMarker([stop.lat,stop.lng],{className:'browse-stop',radius:5,color:'#fff',weight:2,fillColor:activeRoute.color,fillOpacity:1}).addTo(stopMarkers);
+  marker.bindTooltip(escapeHTML(stopName(id)),{direction:'top',offset:[0,-4]});
+  marker.bindPopup('<strong>'+escapeHTML(stopName(id))+'</strong><br><small>'+escapeHTML(routeName(activeRoute))+'</small>');
+ });
+ stopMarkers.bringToFront?.();
+}
+function showWeekly(route) { dialogRoute=route;renderWeekly(route);$('schedule-dialog').showModal(); }
+function renderWeekly(route) {
+ $('schedule-title').textContent=route.shortName+' · '+routeName(route);
+ $('schedule-intro').textContent=t('weeklyIntro');$('schedule-note').textContent=t('weeklyNote');
+ const day=schedules.weekdayOf(today());
+ $('schedule-body').innerHTML='<table class="weekly-table"><tbody>'+[1,2,3,4,5,6,0].map(d=>'<tr'+(d===day?' class="is-today"':'')+'><th scope="row">'+t('weekDays')[d]+(d===day?' · '+t('today'):'')+'</th><td>'+formatWindows(schedules.routes[route.id].weekly[d],true)+'</td></tr>').join('')+'</tbody></table>';
+}
+function getRideStops(route,startId,endId) {
+ const start=route.stops.indexOf(startId),end=route.stops.indexOf(endId);
+ if(start<0||end<0||start===end)return null;
+ return end>start?route.stops.slice(start,end+1):route.loop?route.stops.slice(start).concat(route.stops.slice(0,end+1)):null;
+}
+function renderSearch() { window.LeHighNavigation?.render(); }
+let tileIssue=false, missingBasemap=false;
+function updateMapStatus() { $('map-status').hidden=!tileIssue&&!missingBasemap; if(missingBasemap)$('map-status').textContent=t('mapMissing');else if(tileIssue)$('map-status').textContent=t('mapError'); }
+function initMap() {
+ map=L.map('map',{zoomControl:false,scrollWheelZoom:true,zoomSnap:.1}).setView(window.innerWidth<=760?[40.6063,-75.3778]:[40.606,-75.371],16);
+ map.zoomControl=L.control.zoom({position:'bottomright'}).addTo(map);
+ const config=window.LEHIGH_MAP_CONFIG;
+ if(config?.tileUrl){
+  const base=L.tileLayer(config.tileUrl,{tileSize:256,minZoom:1,maxZoom:config.maxZoom||19,crossOrigin:true,attribution:config.attribution||'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'});
+  base.on('tileerror',()=>{tileIssue=true;updateMapStatus();});
+  base.on('tileload',()=>{tileIssue=false;updateMapStatus();});
+  base.addTo(map);basemapLayer=base;
+ }else{missingBasemap=true;}
+ stopMarkers=L.featureGroup().addTo(map);
+}
+function renderLiveStatus(status){
+ const widget=$('live-widget');if(!widget)return;widget.hidden=!status.routeId;
+ if(activeRoute&&status.routeId===String(activeRoute.passioId))$('live-status').textContent=status.message||'';
+ $('live-widget-title').textContent=(status.route?.shortName?status.route.shortName+' · ':'')+t('liveBusesTitle');
+ $('live-widget-message').textContent=status.message||'';
+ $('live-refresh').disabled=status.state==='loading';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ initMap();
+ liveBuses=window.LeHighLiveBuses?.create({map,L,getLanguage:()=>language,onStatus:renderLiveStatus});
+ window.initNavigation?.();
+ window.LeHighCampusExtras?.init({map,L,baseLayer:basemapLayer,getLanguage:()=>language,onTileIssue:issue=>{tileIssue=issue;updateMapStatus();}});
+ $('live-refresh').addEventListener('click',async()=>{const button=$('live-refresh');button.disabled=true;try{await liveBuses?.refresh();}finally{button.disabled=false;}});
+ applyLanguage();
+ document.querySelectorAll('[data-lang]').forEach(button=>button.addEventListener('click',()=>{language=button.dataset.lang;try{localStorage.setItem('lehigh-language-v2',language);}catch(_){}applyLanguage();}));
+ $('fit-route').addEventListener('click',fitRoute);
+ $('menu-toggle').addEventListener('click',()=>setDrawer($('menu-toggle').getAttribute('aria-expanded')!=='true'));
+ $('clear-route').addEventListener('click',()=>{window.LeHighNavigation?.clearJourney();clearRouteSelection();});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('schedule-dialog').open)setDrawer(false);});
+ $('close-schedule').addEventListener('click',()=>$('schedule-dialog').close());
+ $('schedule-dialog').addEventListener('click',event=>{if(event.target===$('schedule-dialog')){const r=$('schedule-dialog').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)$('schedule-dialog').close();}});
+ new ResizeObserver(()=>{map.invalidateSize({animate:false});fitRoute();}).observe($('map'));
+ currentDateKey=today();setInterval(()=>{if(today()!==currentDateKey){currentDateKey=today();applyLanguage();}},60000);
 });
 
-/**
- * 初始化地图与独立图层组
- */
-function initMap() {
-    map = L.map('map').setView([40.6050, -75.3700], 14);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 18
-    }).addTo(map);
-
-    // 实例化隔离的图层组并挂载至地图容器
-    busStopsLayerGroup = L.layerGroup().addTo(map);
-    routePolylineLayerGroup = L.layerGroup().addTo(map);
-}
-
-/**
- * 响应线路点击事件：过滤专属站点，并基于 OSRM 引擎生成贴路拓扑路径
- * @param {Object} route - 目标线路配置对象
- * @param {HTMLElement} clickedEl - 侧边栏 DOM 节点
- */
-async function displayRouteOnMap(route, clickedEl) {
-    // 切换UI高亮状态
-    document.querySelectorAll('.route-item').forEach(el => el.classList.remove('active'));
-    if (clickedEl) clickedEl.classList.add('active');
-
-    // 核心清理：销毁现有所有 Marker 与矢量折线
-    busStopsLayerGroup.clearLayers();
-    routePolylineLayerGroup.clearLayers();
-
-    // 筛选当前线路的专属站点集合
-    const currentRouteStops = route.stops
-        .map(stopId => transitData.stops[stopId])
-        .filter(stop => stop !== undefined);
-
-    // 仅绘制当前线路关联的站点 Marker
-    currentRouteStops.forEach(stop => {
-        const marker = L.marker([stop.lat, stop.lng]);
-        marker.bindPopup(`
-            <div style="font-family: sans-serif;">
-                <b style="color:${route.color};">🚏 ${stop.name}</b><br>
-                <small>Serviced by: <strong>${route.shortName}</strong></small>
-            </div>
-        `);
-        busStopsLayerGroup.addLayer(marker);
-    });
-
-    // 构造 OSRM 拓扑匹配 API 请求 URL
-    const coordinatesString = currentRouteStops
-        .map(stop => `${stop.lng},${stop.lat}`)
-        .join(';');
-
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson`;
-
-    try {
-        updateDisplayCard(route, currentRouteStops, true);
-
-        const response = await fetch(osrmUrl);
-        const data = await response.json();
-
-        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-            // 解析 OSRM 返回的贴合真实道路网的 GeoJSON 对象
-            const routeGeoJSON = data.routes[0].geometry;
-
-            const polylineLayer = L.geoJSON(routeGeoJSON, {
-                style: {
-                    color: route.color,
-                    weight: 6,
-                    opacity: 0.85,
-                    lineJoin: 'round'
-                }
-            });
-
-            routePolylineLayerGroup.addLayer(polylineLayer);
-            map.fitBounds(polylineLayer.getBounds(), { padding: [35, 35] });
-        } else {
-            throw new Error('OSRM routing request failed.');
-        }
-    } catch (error) {
-        // 异常降级机制：退回使用站点坐标直接生成折线
-        const fallbackLatLngs = currentRouteStops.map(stop => [stop.lat, stop.lng]);
-        const fallbackPolyline = L.polyline(fallbackLatLngs, {
-            color: route.color,
-            weight: 5,
-            opacity: 0.8,
-            dashArray: '6, 8'
-        });
-        routePolylineLayerGroup.addLayer(fallbackPolyline);
-        map.fitBounds(fallbackPolyline.getBounds(), { padding: [35, 35] });
-    } finally {
-        updateDisplayCard(route, currentRouteStops, false);
-    }
-}
-
-/**
- * 更新面板路线详情描述卡片
- */
-function updateDisplayCard(route, stops, isLoading) {
-    const displayArea = document.getElementById('display-area');
-    const stopNamesList = stops.map(s => s.name).join(' ➔ ');
-
-    displayArea.innerHTML = `
-        <h3 style="color:${route.color}; margin-bottom: 0.5rem; display:flex; align-items:center; gap:8px;">
-            <span>🚌 ${route.name} (${route.shortName})</span>
-            ${isLoading ? '<small style="font-size:0.75rem; color:#888;">(贴路轨迹计算中...)</small>' : ''}
-        </h3>
-        <p><strong>线路简介：</strong>${route.description}</p>
-        <p style="margin-top:0.4rem; font-size:0.88rem;">
-            <strong>专属站点 (${stops.length}个)：</strong><br>
-            <span style="color:#555;">${stopNamesList}</span>
-        </p>
-    `;
-}
-
-/**
- * 填充起点与终点下拉选择框
- */
-function populateStopDropdowns() {
-    const startSelect = document.getElementById('start-stop');
-    const endSelect = document.getElementById('end-stop');
-
-    startSelect.innerHTML = '<option value="">请选择出发站点...</option>';
-    endSelect.innerHTML = '<option value="">请选择到达站点...</option>';
-
-    Object.values(transitData.stops).forEach(stop => {
-        startSelect.add(new Option(stop.name, stop.id));
-        endSelect.add(new Option(stop.name, stop.id));
-    });
-}
-
-/**
- * 渲染侧边栏线路列表
- */
-function renderSidebarRoutes() {
-    const routeListEl = document.getElementById('route-list');
-    routeListEl.innerHTML = '';
-
-    transitData.routes.forEach(route => {
-        const li = document.createElement('li');
-        li.className = 'route-item';
-        li.innerHTML = `
-            <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${route.color}; margin-right:8px;"></span>
-            <strong>[${route.shortName}]</strong>&nbsp;${route.name}
-        `;
-        li.addEventListener('click', () => displayRouteOnMap(route, li));
-        routeListEl.appendChild(li);
-    });
-}
-
-/**
- * 直达路线规划与匹配算法
- */
-function handleRouteSearch(e) {
-    e.preventDefault();
-    const startId = document.getElementById('start-stop').value;
-    const endId = document.getElementById('end-stop').value;
-    const displayArea = document.getElementById('display-area');
-
-    if (!startId || !endId) {
-        displayArea.innerHTML = `<p style="color: #c0392b;">⚠️ 请同时选择起点和终点站点。</p>`;
-        return;
-    }
-
-    if (startId === endId) {
-        displayArea.innerHTML = `<p style="color: #c0392b; font-weight: bold;">⚠️ 起点与终点相同，请选择不同的站点。</p>`;
-        return;
-    }
-
-    const directRoutes = transitData.routes.filter(r => {
-        const startIdx = r.stops.indexOf(startId);
-        const endIdx = r.stops.indexOf(endId);
-        return startIdx !== -1 && endIdx !== -1 && startIdx < endIdx;
-    });
-
-    if (directRoutes.length > 0) {
-        const recommended = directRoutes[0];
-        displayRouteOnMap(recommended, null);
-
-        displayArea.innerHTML = `
-            <h3 style="color: #27ae60; margin-bottom: 0.5rem;">✅ 推荐直达线路：${recommended.name} (${recommended.shortName})</h3>
-            <p><strong>📍 上车站：</strong> ${transitData.stops[startId].name}</p>
-            <p><strong>🏁 下车站：</strong> ${transitData.stops[endId].name}</p>
-            <p style="margin-top:0.6rem; font-size: 0.85rem; color: var(--text-muted);">
-                💡 提示：如需查看动态车辆实时位置与预测 ETA，请访问 
-                <a href="${transitData.links.liveTracking}" target="_blank" style="color:var(--lehigh-brown); font-weight:600;">Lehigh Passio GO Live ↗</a>。
-            </p>
-        `;
-    } else {
-        busStopsLayerGroup.clearLayers();
-        routePolylineLayerGroup.clearLayers();
-
-        displayArea.innerHTML = `
-            <h3 style="color: #e67e22; margin-bottom: 0.5rem;">ℹ️ 暂无直达线路</h3>
-            <p>所选站点之间无直达循环巴士，建议前往 <strong>Packer Avenue Bus Stop</strong> 或 <strong>Farrington Square</strong> 枢纽站点进行换乘。</p>
-        `;
-    }
-}
-
-function renderExternalLinks() {
-    document.getElementById('external-links').innerHTML = `
-        <a href="${transitData.links.liveTracking}" target="_blank" style="margin-right:1rem; color:var(--lehigh-brown); text-decoration:none; font-weight:600;">📡 Live Passio GO</a>
-        <a href="${transitData.links.officialSchedules}" target="_blank" style="color:var(--text-muted); text-decoration:none;">📅 Schedules</a>
-    `;
-}
-
-function renderConnections() {
-    const connContainer = document.getElementById('connections-container');
-    transitData.connections.forEach(conn => {
-        connContainer.innerHTML = `
-            <p style="font-size:0.85rem; color:var(--text-muted);">
-                <strong>${conn.name}</strong><br>
-                ${conn.address}<br>
-                Routes: <strong>${conn.routes}</strong>
-            </p>
-        `;
-    });
-}
+window.LeHighMapState={hasSelection:()=>Boolean(activeRoute)||Boolean(window.LeHighNavigation?.hasJourney())||$('menu-toggle')?.getAttribute('aria-expanded')==='true',dismissSelection(){window.LeHighNavigation?.collapseSearch({resetView:false});clearRouteSelection();setDrawer(false);}};
