@@ -310,3 +310,8 @@ Official university transportation information and announcements should always t
 **[🌐 Try LUbus](https://forgiveej.github.io/LUbus/)** · **[💻 View Source](https://github.com/forgiveej/LUbus)**
 
 </div>
+
+
+## 19 October 2026 update
+
+Routes not running now are grouped below current scheduled service. Stops can be inspected and used as trip endpoints. Mobile location retries recoverable failures and resumes permitted tracking. Itineraries now show the selected boarding stop and real Passio GO arrival predictions, refreshed every 20 seconds while visible. Predictions are estimates; absent or stale data is shown explicitly, and trip duration excludes waiting time. Browser location still requires device/site permission.

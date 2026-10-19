@@ -1280,7 +1280,24 @@ window.LEHIGH_TRANSIT_DATA = {
           ]
         ]
       ],
-      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/packer-express"
+      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/packer-express",
+      "stopPositions": {
+        "8242": 2,
+        "8233": 3,
+        "8253": 4,
+        "84205": 5,
+        "8234": 6,
+        "84202": 7,
+        "84260": 8,
+        "13208": 9,
+        "19037": 10,
+        "8231": 11,
+        "8232": 12,
+        "84206": 13,
+        "8235": 14,
+        "8243": 15,
+        "8255": 16
+      }
     },
     {
       "id": "mountaintop-connector",
@@ -2841,7 +2858,28 @@ window.LEHIGH_TRANSIT_DATA = {
           ]
         ]
       ],
-      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/mountaintop-connector"
+      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/mountaintop-connector",
+      "stopPositions": {
+        "19037": 1,
+        "8231": 2,
+        "8232": 3,
+        "84206": 4,
+        "8235": 5,
+        "8243": 6,
+        "8255": 7,
+        "84189": 9,
+        "84196": 10,
+        "84317": 11,
+        "20884": 12,
+        "8242": 13,
+        "8233": 14,
+        "8253": 15,
+        "84205": 16,
+        "8234": 17,
+        "84202": 18,
+        "84260": 19,
+        "13208": 20
+      }
     },
     {
       "id": "goodman-connector",
@@ -4908,7 +4946,26 @@ window.LEHIGH_TRANSIT_DATA = {
           ]
         ]
       ],
-      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/goodman-connector"
+      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/goodman-connector",
+      "stopPositions": {
+        "213495": 5,
+        "8242": 6,
+        "8233": 7,
+        "8253": 8,
+        "84205": 9,
+        "8234": 10,
+        "84202": 11,
+        "84260": 12,
+        "13208": 13,
+        "19037": 14,
+        "8231": 15,
+        "8232": 16,
+        "84206": 17,
+        "8235": 18,
+        "8243": 19,
+        "8255": 20,
+        "213496": 21
+      }
     },
     {
       "id": "campus-connector",
@@ -8550,7 +8607,37 @@ window.LEHIGH_TRANSIT_DATA = {
           ]
         ]
       ],
-      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/campus-connector"
+      "source": "https://auxiliaryservices.lehigh.edu/transit-route-information/campus-connector",
+      "stopPositions": {
+        "8229": 1,
+        "8705": 2,
+        "13180": 3,
+        "84189": 5,
+        "84196": 6,
+        "84317": 7,
+        "20884": 8,
+        "8242": 9,
+        "8233": 10,
+        "8253": 11,
+        "84205": 12,
+        "8234": 13,
+        "84202": 14,
+        "84260": 15,
+        "13208": 16,
+        "19037": 17,
+        "8231": 18,
+        "8232": 19,
+        "84206": 20,
+        "8235": 21,
+        "8243": 22,
+        "8255": 23,
+        "175055": 25,
+        "84197": 26,
+        "84190": 27,
+        "20883": 28,
+        "135260": 29,
+        "135261": 30
+      }
     }
   ],
   "checkedOn": "2026-10-17",

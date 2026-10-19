@@ -41,6 +41,37 @@ let language='en';
 try { language = ['en','es','zh'].includes(localStorage.getItem('lehigh-language-v2')) ? localStorage.getItem('lehigh-language-v2') : 'en'; } catch (_) {}
 let basemapLayer;
 let map, activePolyline, stopMarkers, activeRoute = null, routeView = null, dialogRoute = null, searchState = null, currentDateKey, liveBuses;
+let inactiveRoutesExpanded=false;
+const serviceWords={
+ en:{running:'Running now',overnight:'Running now · overnight until {time}',upcoming:'Starts today at {time}',finished:'Service finished today',noService:'No service today',holiday:'No service today · holiday',inactive:'Not running now ({n})',stop:'Bus stop',start:'Start here',end:'Go here',stopHint:'Choose this stop as your origin or destination.'},
+ zh:{running:'正在运营',overnight:'跨夜班次运营至 {time}',upcoming:'今天 {time} 开始运营',finished:'今日班次已结束',noService:'今天无班次',holiday:'今天停运 · 节假日',inactive:'当前未运营（{n} 条）',stop:'公交站点',start:'设为起点',end:'设为终点',stopHint:'可将此站设为起点或终点。'},
+ es:{running:'En servicio ahora',overnight:'Servicio nocturno hasta las {time}',upcoming:'Empieza hoy a las {time}',finished:'Servicio de hoy finalizado',noService:'Sin servicio hoy',holiday:'Sin servicio hoy · festivo',inactive:'Sin servicio ahora ({n})',stop:'Parada de autobús',start:'Salir de aquí',end:'Ir aquí',stopHint:'Elige esta parada como origen o destino.'}
+};
+function serviceText(key,vars={}){let value=(serviceWords[language]||serviceWords.en)[key]||key;for(const [name,text]of Object.entries(vars))value=value.replace('{'+name+'}',text);return value;}
+// Scheduled service, independent of live GPS. Overnight windows retain their start service date.
+function getRouteServiceStatus(routeId,value=new Date()){
+ const current=schedules.easternParts(value),previous=schedules.shiftDate(current.dateKey,-1);
+ const day=schedules.getDaySchedule(routeId,current.dateKey),before=schedules.getDaySchedule(routeId,previous);
+ const parse=clock=>/^\d{2}:\d{2}$/.test(clock||'')?Number(clock.slice(0,2))*60+Number(clock.slice(3)):NaN;
+ const windows=(source,offset)=>source.windows.map(window=>{
+  const start=parse(window.start),end=parse(window.end);
+  const extra=Number.isFinite(window.endDayOffset)?window.endDayOffset:(end<=start?1:0);
+  return {window,start:start+offset,end:end+extra*1440+offset,dateKey:source.dateKey};
+ }).filter(item=>Number.isFinite(item.start)&&Number.isFinite(item.end)&&item.end>item.start);
+ const currentWindows=windows(day,0),all=windows(before,-1440).concat(currentWindows);
+ const active=all.filter(item=>current.minuteOfDay>=item.start&&current.minuteOfDay<item.end);
+ const upcoming=currentWindows.filter(item=>item.start>current.minuteOfDay).sort((a,b)=>a.start-b.start);
+ const state=active.length?'running':upcoming.length?'upcoming':currentWindows.length?'finished':'no-service';
+ const until=active.length?active.reduce((latest,item)=>item.end>latest.end?item:latest).window.end:null;
+ return {state,running:state==='running',dateKey:current.dateKey,minuteOfDay:current.minuteOfDay,kind:day.kind,
+  todayWindows:day.windows,activeWindows:active.map(item=>item.window),overnight:active.some(item=>item.dateKey===previous),until,
+  nextStart:upcoming[0]?.window.start||null};
+}
+function routeStatusLabel(status){
+ if(status.running)return serviceText(status.overnight?'overnight':'running',{time:status.until});
+ if(status.state==='upcoming')return serviceText('upcoming',{time:status.nextStart});
+ return serviceText(status.state==='finished'?'finished':status.kind==='no-service'?'holiday':'noService');
+}
 Object.assign(copy.en,{closeRoute:'Close route',whereTo:'Where to?',searchPlaces:'Search destinations',backToSearch:'Back to destination search',openMenu:'Open campus routes',closeMenu:'Close campus routes',clearRoute:'Clear selected route'});
 Object.assign(copy.zh,{closeRoute:'关闭路线',whereTo:'想去哪里？',searchPlaces:'搜索目的地',backToSearch:'返回地点搜索',openMenu:'打开校园线路菜单',closeMenu:'收起校园线路菜单',clearRoute:'取消当前线路'});
 function t(key, vars={}) { let value=copy[language]?.[key]??copy.en[key]??key; Object.entries(vars).forEach(([k,v])=>{value=value.replace('{'+k+'}',v);}); return value; }
@@ -86,18 +117,28 @@ function applyLanguage() {
  map.zoomControl._zoomInButton.setAttribute('aria-label',map.zoomControl._zoomInButton.title);
  map.zoomControl._zoomOutButton.setAttribute('aria-label',map.zoomControl._zoomOutButton.title);
 }
-function renderRoutes() {
+function renderRoutes(value=new Date()) {
  const list=$('route-list'); list.replaceChildren();
- transitData.routes.forEach(route=>{
+ const entries=transitData.routes.map(route=>({route,status:getRouteServiceStatus(route.id,value)}));
+ const makeCard=({route,status})=>{
   const li=document.createElement('li'); li.className='route-card'+(activeRoute?.id===route.id?' selected':'');
+  li.dataset.serviceState=status.state;
   li.style.setProperty('--route-color',route.color); li.style.setProperty('--badge-ink',route.shortName==='GC'?'#fff':'#3e462f');
   const button=document.createElement('button'); button.type='button';button.className='route-select';button.dataset.routeId=route.id;button.setAttribute('aria-pressed',String(activeRoute?.id===route.id));
-  const day=schedules.getDaySchedule(route.id,today());
-  button.innerHTML='<span class="route-badge">'+route.shortName+'</span><span class="route-copy"><strong>'+escapeHTML(routeName(route))+'</strong><span class="route-scope">'+escapeHTML(copy[language].scope[routeIndex(route)])+'</span><span class="route-today'+(!day.windows.length?' off':'')+'"><b>'+t('today')+'</b>'+daySummary(route)+'</span></span>';
+  button.innerHTML='<span class="route-badge">'+route.shortName+'</span><span class="route-copy"><strong>'+escapeHTML(routeName(route))+'</strong><span class="route-scope">'+escapeHTML(copy[language].scope[routeIndex(route)])+'</span><span class="route-service-status '+status.state+'">'+escapeHTML(routeStatusLabel(status))+'</span><span class="route-today'+(!status.todayWindows.length?' off':'')+'"><b>'+t('today')+'</b>'+daySummary(route)+'</span></span>';
   button.addEventListener('click',()=>{window.LeHighNavigation?.clearJourney();selectRoute(route);});
   const info=document.createElement('button');info.type='button';info.className='schedule-info';info.textContent='i';info.setAttribute('aria-label',routeName(route)+' · '+t('weeklySchedule'));info.title=t('viewWeek');info.dataset.scheduleId=route.id;
-  info.addEventListener('click',()=>showWeekly(route));li.append(button,info);list.append(li);
- });
+  info.addEventListener('click',()=>showWeekly(route));li.append(button,info);return li;
+ };
+ entries.filter(item=>item.status.running).forEach(entry=>list.append(makeCard(entry)));
+ const inactive=entries.filter(item=>!item.status.running);
+ if(inactive.length){
+  const group=document.createElement('li');group.className='inactive-routes-group';
+  const details=document.createElement('details');details.className='inactive-routes';details.open=inactiveRoutesExpanded;
+  const summary=document.createElement('summary');summary.textContent=serviceText('inactive',{n:inactive.length});
+  const nested=document.createElement('ul');nested.className='route-list inactive-route-list';inactive.forEach(entry=>nested.append(makeCard(entry)));
+  details.addEventListener('toggle',()=>{inactiveRoutesExpanded=details.open;});details.append(summary,nested);group.append(details);list.append(group);
+ }
 }
 function renderChip() {
  const chip=document.querySelector('.map-route-chip');chip.hidden=!activeRoute;
@@ -109,8 +150,9 @@ function renderDetail() {
  const route=activeRoute;
  $('display-area').hidden=!route||routeView==='journey';
  if(!route){$('display-area').replaceChildren();return;}
- $('display-area').innerHTML='<p class="detail-eyebrow">'+t('selectedRoute')+'</p><div class="detail-heading"><h2>'+escapeHTML(routeName(route))+'</h2><span class="detail-count">'+route.stops.length+' '+t('stops')+'</span></div><p class="detail-description">'+escapeHTML(copy[language].descriptions[routeIndex(route)])+'</p><div class="detail-schedule"><strong>'+t('todayService')+'</strong>'+daySummary(route,true)+'<br><button type="button" class="inline-week">'+t('viewWeek')+' ↗</button></div><details class="stops-disclosure"><summary>'+t('viewStops',{n:route.stops.length})+'</summary><ol class="stop-sequence">'+route.stops.map(id=>'<li>'+escapeHTML(stopName(id))+'</li>').join('')+'</ol><p class="direction-note">'+t('directionNote')+'</p></details>';
+ $('display-area').innerHTML='<p class="detail-eyebrow">'+t('selectedRoute')+'</p><div class="detail-heading"><h2>'+escapeHTML(routeName(route))+'</h2><span class="detail-count">'+route.stops.length+' '+t('stops')+'</span></div><p class="detail-description">'+escapeHTML(copy[language].descriptions[routeIndex(route)])+'</p><div class="detail-schedule"><strong>'+t('todayService')+'</strong>'+daySummary(route,true)+'<br><button type="button" class="inline-week">'+t('viewWeek')+' ↗</button></div><details class="stops-disclosure"><summary>'+t('viewStops',{n:route.stops.length})+'</summary><ol class="stop-sequence">'+route.stops.map(id=>'<li><button type="button" class="stop-list-button" data-stop-id="'+escapeHTML(id)+'">'+escapeHTML(stopName(id))+'</button></li>').join('')+'</ol><p class="direction-note">'+t('directionNote')+'</p></details>';
  $('display-area').querySelector('.inline-week').addEventListener('click',()=>showWeekly(route));
+ $('display-area').querySelectorAll('.stop-list-button').forEach(button=>button.addEventListener('click',()=>openStop(button.dataset.stopId,{route,focusMap:true})));
 }
 function setDrawer(open) {
  const sidebar=document.querySelector('.sidebar');sidebar.classList.toggle('open',open);
@@ -148,14 +190,52 @@ function fitRoute() {
  if(!activePolyline)return;
  map.fitBounds(activePolyline.getBounds(),{...mapViewPadding(),maxZoom:16,animate:false});
 }
+function stopPlace(value){
+ const key=String(typeof value==='object'?(value?.stopId??value?.id??''):value??'').replace(/^stop-/,'');
+ const source=transitData.stops[key]||(value&&typeof value==='object'?value:null);
+ if(!source||!Number.isFinite(source.lat)||!Number.isFinite(source.lng)||Math.abs(source.lat)>90||Math.abs(source.lng)>180)return null;
+ return {id:'stop-'+key,stopId:key,type:'stop',name:transitData.stops[key]?stopName(key):String(source.name||serviceText('stop')),lat:source.lat,lng:source.lng};
+}
+function selectStop(field,value){
+ const place=stopPlace(value);if(!place||!['start','end'].includes(field))return;
+ map.closePopup();window.LeHighCampusExtras?.closePanels?.();window.LeHighNavigation?.selectPlace(field,place);
+}
+function createStopPopup(value,{route,label}={}){
+ const place=stopPlace(value),container=document.createElement('div');container.className='transit-stop-info';
+ if(!place)return container;
+ const title=document.createElement('strong');title.className='transit-stop-title';title.textContent=place.name;container.append(title);
+ const subtitle=document.createElement('p');subtitle.className='transit-stop-route';subtitle.textContent=[label,route?route.shortName+' · '+routeName(route):serviceText('stop')].filter(Boolean).join(' · ');container.append(subtitle);
+ const hint=document.createElement('p');hint.className='transit-stop-hint';hint.textContent=serviceText('stopHint');container.append(hint);
+ const actions=document.createElement('div');actions.className='transit-stop-actions';
+ for(const field of ['start','end']){const button=document.createElement('button');button.type='button';button.textContent=serviceText(field);button.dataset.stopField=field;button.addEventListener('click',event=>{event.stopPropagation();selectStop(field,value);});actions.append(button);}
+ container.append(actions);L.DomEvent?.disableClickPropagation?.(container);L.DomEvent?.disableScrollPropagation?.(container);return container;
+}
+function openStop(value,options={}){
+ const place=stopPlace(value);if(!place||!map)return;
+ if(options.focusMap)map.setView([place.lat,place.lng],Math.max(16,map.getZoom?.()||16),{animate:false});
+ L.popup({className:'transit-stop-popup',maxWidth:310}).setLatLng([place.lat,place.lng]).setContent(createStopPopup(value,options)).openOn(map);
+}
+function bindStopMarker(marker,value,options={}){
+ const place=stopPlace(value);if(!place)return marker;
+ marker.options.bubblingMouseEvents=false;marker.unbindPopup?.();
+ marker.bindTooltip(escapeHTML(place.name),{direction:'top',offset:[0,-7]});
+ const activate=event=>{
+  event.lehighStopSelected=true;if(event.originalEvent){event.originalEvent.lehighStopSelected=true;event.originalEvent.stopPropagation?.();L.DomEvent?.stopPropagation?.(event.originalEvent);}
+  if(window.LeHighNavigation?.isPicking?.()){map.fire?.('click',{latlng:{lat:place.lat,lng:place.lng},originalEvent:event.originalEvent});return;}
+  openStop(value,options);
+ };
+ marker.on('click',activate);
+ const element=marker.getElement?.();if(element){element.setAttribute('role','button');element.setAttribute('tabindex','0');element.setAttribute('aria-label',serviceText('stop')+' · '+place.name);element.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();activate({originalEvent:event});}});}
+ return marker;
+}
 function renderMarkers() {
  stopMarkers.clearLayers();
  if(!activeRoute||routeView!=='browse')return;
  [...new Set(activeRoute.stops)].forEach(id=>{
   const stop=transitData.stops[id];
-  const marker=L.circleMarker([stop.lat,stop.lng],{className:'browse-stop',radius:5,color:'#fff',weight:2,fillColor:activeRoute.color,fillOpacity:1}).addTo(stopMarkers);
-  marker.bindTooltip(escapeHTML(stopName(id)),{direction:'top',offset:[0,-4]});
-  marker.bindPopup('<strong>'+escapeHTML(stopName(id))+'</strong><br><small>'+escapeHTML(routeName(activeRoute))+'</small>');
+  const marker=L.circleMarker([stop.lat,stop.lng],{className:'browse-stop-hit',pane:'lehighStops',radius:18,color:activeRoute.color,weight:0,opacity:0,fillColor:activeRoute.color,fillOpacity:0,bubblingMouseEvents:false}).addTo(stopMarkers);
+  bindStopMarker(marker,id,{route:activeRoute});
+  L.circleMarker([stop.lat,stop.lng],{className:'browse-stop',pane:'lehighStops',radius:6,color:'#fff',weight:2,fillColor:activeRoute.color,fillOpacity:1,interactive:false}).addTo(stopMarkers);
  });
  stopMarkers.bringToFront?.();
 }
@@ -176,6 +256,7 @@ let tileIssue=false, missingBasemap=false;
 function updateMapStatus() { $('map-status').hidden=!tileIssue&&!missingBasemap; if(missingBasemap)$('map-status').textContent=t('mapMissing');else if(tileIssue)$('map-status').textContent=t('mapError'); }
 function initMap() {
  map=L.map('map',{zoomControl:false,scrollWheelZoom:true,zoomSnap:.1}).setView(window.innerWidth<=760?[40.6063,-75.3778]:[40.606,-75.371],16);
+ const stopPane=map.createPane?.('lehighStops');if(stopPane)stopPane.style.zIndex='610';
  map.zoomControl=L.control.zoom({position:'bottomright'}).addTo(map);
  const config=window.LEHIGH_MAP_CONFIG;
  if(config?.tileUrl){
@@ -208,7 +289,11 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('close-schedule').addEventListener('click',()=>$('schedule-dialog').close());
  $('schedule-dialog').addEventListener('click',event=>{if(event.target===$('schedule-dialog')){const r=$('schedule-dialog').getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)$('schedule-dialog').close();}});
  new ResizeObserver(()=>{map.invalidateSize({animate:false});fitRoute();}).observe($('map'));
- currentDateKey=today();setInterval(()=>{if(today()!==currentDateKey){currentDateKey=today();applyLanguage();}},60000);
+ const refreshService=()=>{if(today()!==currentDateKey){currentDateKey=today();applyLanguage();}else renderRoutes();};
+ currentDateKey=today();setInterval(refreshService,60000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshService();});
 });
 
+window.LeHighServiceStatus={getStatus:getRouteServiceStatus};
+window.LeHighStopUI={createPopup:createStopPopup,bindMarker:bindStopMarker,openStop,selectStop};
 window.LeHighMapState={hasSelection:()=>Boolean(activeRoute)||Boolean(window.LeHighNavigation?.hasJourney())||$('menu-toggle')?.getAttribute('aria-expanded')==='true',dismissSelection(){window.LeHighNavigation?.collapseSearch({resetView:false});clearRouteSelection();setDrawer(false);}};

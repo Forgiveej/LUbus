@@ -1,3 +1,2 @@
-Final approved release: 2026-10-18
-Matches Sites production v9
-Source commit: 4864b9b2aae0419224f7e4c9a396ebd017bf367d
+LUbus service, stops, geolocation and live arrivals update: 2026-10-19
+Source commit: 129869ed6d0dd975c266f94eefe4b7ddac15e8a8

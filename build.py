@@ -8,7 +8,7 @@ FILES = (
     'index.html', 'style1.css', 'script1.js', 'transit-data.js',
     'schedule-data.js', 'campus-places.js', 'search-scope.js',
     'journey-engine.js', 'live-buses.js', 'navigation.js', 'map-config.js',
-    'i18n-es.js', 'campus-extras.js',
+    'i18n-es.js', 'campus-extras.js', 'live-arrivals.js',
 )
 
 for name in FILES:

@@ -221,3 +221,45 @@
 }
 
 .app-shell:has(.search-open)>.sidebar{visibility:hidden;pointer-events:none}
+
+/* Current scheduled service and generous stop interactions. */
+/* The live arrival belongs to this itinerary's boarding stop, not its destination. */
+.boarding-arrival{margin:14px 0 3px;padding:15px;border:1px solid #b8cfb4;border-left:4px solid #2d6653;border-radius:12px;background:#edf5e9;min-width:0;color:#244636}
+.boarding-arrival .boarding-eyebrow{margin:0 0 5px;font-size:11px;letter-spacing:.08em;font-weight:750;color:#4b6752}
+.journey-legs .boarding-stop-name{display:block;font-size:20px;line-height:1.35;overflow-wrap:anywhere;color:#203e2d}
+.boarding-arrival .boarding-walk{margin:7px 0 13px;font-size:13px;line-height:1.5;color:#4d6550}
+.boarding-arrival-row{display:flex;align-items:center;gap:10px;justify-content:space-between;border-top:1px solid #cddfc8;padding-top:11px}
+.boarding-arrival-row>div{min-width:0}.boarding-arrival-row span{font-size:11px;letter-spacing:.06em;font-weight:700;color:#516752}
+.journey-legs #boarding-arrival-value{display:block;margin-top:4px;font-size:26px;line-height:1.3;color:#245a42;font-weight:750;overflow-wrap:anywhere}
+.boarding-arrival-row button{flex-shrink:0;width:44px;height:44px;cursor:pointer;border:1px solid #afc6a5;border-radius:10px;background:#fff;color:#28583f;font-size:27px;touch-action:manipulation}
+.boarding-arrival-row button:disabled{opacity:.5;cursor:wait}
+.journey-legs .boarding-arrival small{display:block;margin-top:9px;font-size:11px;line-height:1.5;color:#4c6651}
+.journey-legs .boarding-arrival .boarding-wait-note{margin-top:3px;color:#65725f}
+.boarding-arrival[data-state="empty"] #boarding-arrival-value,.boarding-arrival[data-state="error"] #boarding-arrival-value,.boarding-arrival[data-state="stale"] #boarding-arrival-value,.boarding-arrival[data-state="loading"] #boarding-arrival-value,.boarding-arrival[data-state="due"] #boarding-arrival-value{font-size:17px;font-weight:650}
+@media(max-width:760px){.boarding-arrival{padding:12px;margin-top:12px}.journey-legs .boarding-stop-name{font-size:18px}.journey-legs #boarding-arrival-value{font-size:24px}.boarding-arrival .boarding-walk{font-size:12px}}
+.route-service-status{display:block;margin-top:9px;font-size:12px;font-weight:650;line-height:1.5;color:#686d64}
+.route-service-status.running{color:#28603e}
+.route-service-status.upcoming{color:#73571f}
+.route-service-status.no-service,.route-service-status.finished{color:#6f756a}
+.route-copy .route-today{margin-top:7px}
+.inactive-routes-group{list-style:none;min-width:0;margin-top:8px}
+.inactive-routes{border-top:1px solid #dce4d5;padding-top:7px}
+.inactive-routes>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:7px 5px;cursor:pointer;list-style:none;color:#56664d;font-size:14px;font-weight:650;line-height:1.5}
+.inactive-routes>summary::-webkit-details-marker{display:none}
+.inactive-routes>summary::after{content:'+';font-size:23px;font-weight:400;color:#6c7e60}
+.inactive-routes[open]>summary::after{content:'−'}
+.inactive-route-list{margin-top:8px}
+.browse-stop-hit{cursor:pointer;touch-action:manipulation}
+.browse-stop-hit:hover{stroke-opacity:.45;stroke-width:3;fill-opacity:.1}
+.browse-stop-hit:focus-visible{outline:none;stroke:#bb7d08;stroke-opacity:1;stroke-width:3;fill:#efbd4b;fill-opacity:.18}
+.transit-stop-info{min-width:220px;max-width:280px}
+.transit-stop-title{display:block;font-size:17px;line-height:1.45;color:#2f422c;font-weight:700}
+.transit-stop-route{font-size:13px;line-height:1.5;color:#52674b;margin:7px 0 0}
+.transit-stop-hint{font-size:12px;line-height:1.55;color:#6b7761;margin:9px 0}
+.transit-stop-actions{display:flex;gap:8px;margin-top:12px}
+.transit-stop-actions button{flex:1;min-height:44px;padding:9px 10px;border:1px solid #c3d1b8;border-radius:8px;background:#f1f6eb;color:#345735;font:600 14px/1.4 inherit;font-family:inherit;cursor:pointer}
+.transit-stop-actions button:last-child{background:#365d48;color:#fff;border-color:#365d48}
+.transit-stop-actions button:hover{filter:brightness(.96)}
+.stop-sequence .stop-list-button{display:block;width:100%;min-height:40px;margin:-8px 0 0;padding:8px 4px 8px 0;border:0;border-radius:5px;background:transparent;text-align:left;color:#48603e;font:inherit;line-height:1.55;cursor:pointer}
+.stop-sequence .stop-list-button:hover{color:#244b2d;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:760px){.route-service-status{font-size:12px}.inactive-routes>summary{font-size:14px}.transit-stop-info{min-width:200px;max-width:260px}.transit-stop-title{font-size:16px}.transit-stop-actions button{font-size:13px}}

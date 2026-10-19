@@ -110,7 +110,7 @@
   options.map.on('moveend zoomend',campusPoints);
   options.map.on('popupopen',()=>{popupOpen=true;});options.map.on('popupclose',()=>{popupOpen=false;});
   const dismissPopup=event=>{
-   if(event.target?.closest?.('.leaflet-popup'))return;
+   if(event.target?.closest?.('.leaflet-popup')||event.lehighStopSelected)return;
    const open=popupOpen||options.map.getPopup?.()?.isOpen?.();if(!open)return;
    if(event.target?.closest?.('#map'))popupDismissUntil=Date.now()+800;
    options.map.closePopup();popupOpen=false;
@@ -118,7 +118,7 @@
   root.document.addEventListener('pointerdown',dismissPopup,{capture:true,passive:true});
   root.document.addEventListener('click',dismissPopup,true);root.document.addEventListener('focusin',dismissPopup,true);
   options.map.on('click',event=>{
-   if(event.lehighPicked||root.LeHighNavigation?.isPicking?.())return;
+   if(event.lehighPicked||event.lehighStopSelected||event.originalEvent?.lehighStopSelected||root.LeHighNavigation?.isPicking?.())return;
    if(closePanels())return;if(root.LeHighNavigation?.dismissSuggestions?.())return;
    if(dismissRouteOnMap()||Date.now()<popupDismissUntil)return;
    const place=nearestCampusPlace(event.latlng);if(place){openPlace(place);return;}

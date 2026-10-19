@@ -171,7 +171,7 @@
     const maxWalk = options.maxWalkMeters ?? 1400;
     const dayKey = options.dateKey || root.LEHIGH_SCHEDULES?.getEasternDate?.();
     const compareCandidates = (a, b) => options.preferNearestStops
-      ? (a.approachDistanceMeters + a.egressDistanceMeters) - (b.approachDistanceMeters + b.egressDistanceMeters)
+      ? a.approachDistanceMeters - b.approachDistanceMeters || a.egressDistanceMeters - b.egressDistanceMeters
         || a.estimatedDurationSeconds - b.estimatedDurationSeconds
       : a.estimatedDurationSeconds - b.estimatedDurationSeconds;
     const result = [];
@@ -180,8 +180,8 @@
       const serviceAvailable = !schedule || schedule.windows.length > 0;
       if (!serviceAvailable && !options.includeInactive) continue;
       const ids = (route.stops || []).map(String);
-      const nearStart = ids.map(id => ({ id, distance: distanceMeters(a, stops[id]) })).filter(item => item.distance <= maxWalk);
-      const nearEnd = ids.map(id => ({ id, distance: distanceMeters(b, stops[id]) })).filter(item => item.distance <= maxWalk);
+      const nearStart = ids.map(id => ({ id, distance: distanceMeters(a, stops[id]) })).filter(item => item.distance <= maxWalk && (!options.fixedBoardId || item.id === String(options.fixedBoardId)));
+      const nearEnd = ids.map(id => ({ id, distance: distanceMeters(b, stops[id]) })).filter(item => item.distance <= maxWalk && (!options.fixedAlightId || item.id === String(options.fixedAlightId)));
       let best = null;
       for (const board of nearStart) for (const alight of nearEnd) {
         const ride = rideInfo(route, board.id, alight.id);

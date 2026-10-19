@@ -23,7 +23,33 @@ Object.assign(copy.en,navigationCopy.en);Object.assign(copy.zh,navigationCopy.zh
 Object.assign(copy.en,{locationPermissionDenied:'Location access is disabled for this site. Enable it in browser site settings, or enter a starting point.',locationBrowserBlocked:'Your browser did not grant location access. Try the location button, or enter a starting point.',locationPolicyBlocked:'This page’s permissions policy does not allow location. Open the website directly, or enter a starting point.',locationTimeout:'Location took too long. Try again, or enter a starting point.',routeAlternatives:'Other routes',approxDuration:'Approximate travel time'});
 Object.assign(copy.zh,{locationPermissionDenied:'此网站目前没有定位权限。可在浏览器网站设置中允许定位，或手动输入起点。',locationBrowserBlocked:'浏览器未授予定位访问。可点击定位按钮重试，或手动输入起点。',locationPolicyBlocked:'当前页面的策略不允许定位。请直接打开网站，或手动输入起点。',locationTimeout:'获取位置超时，请重试或手动输入起点。',routeAlternatives:'其他方案',approxDuration:'预计路程用时'});
 const navState={plannerExpanded:false,resultMode:false,searchIntent:0,locationMessageVersion:0,endpoints:{start:null,end:null},mode:'transit',location:null,locationAccuracy:null,locationTime:null,locationIssue:null,watch:null,fields:{},endpointVersion:{start:0,end:0},request:null,version:0,options:[],selected:0,busy:false,error:null,note:null,bounds:null,picking:null,locationMessage:null,locationRequest:null};
-let journeyLayers,endpointLayers,userLayers;
+const deviceLocation={started:false,paused:false,lifecycleVersion:0,interactionVersion:0,requestVersion:0,watchVersion:0,permissionVersion:0,permission:'unknown',blocked:false,cancelRequest:null,resume:null,fixVersion:0};
+let journeyLayers,endpointLayers,userLayers,liveArrivals;
+const boardingCopy={
+ en:{title:'YOUR BOARDING STOP',near:'Closest usable stop for this route',fromStart:'From your starting point',next:'NEXT BUS',refresh:'Refresh arrival',source:'Live estimate · Passio GO · updates every 20s',fresh:'Updated {n}s ago',noWait:'Travel time above excludes this wait',noTransitNow:'No campus bus connecting these places is operating now. Showing a walking route.'},
+ zh:{title:'在这里上车',near:'这条线路距起点最近的可用上车站',fromStart:'从出发地前往',next:'下一班到站',refresh:'刷新到站时间',source:'Passio GO 实时预测 · 每 20 秒更新',fresh:'{n} 秒前更新',noWait:'上方路程用时不含这里的等车时间',noTransitNow:'目前没有运营中的校园公交连接这两个地点，先展示步行路线。'},
+ es:{title:'TU PARADA DE SALIDA',near:'La parada utilizable más cercana de esta ruta',fromStart:'Desde el origen',next:'PRÓXIMO AUTOBÚS',refresh:'Actualizar llegada',source:'Estimación de Passio GO · cada 20 s',fresh:'Actualizado hace {n} s',noWait:'El tiempo anterior no incluye esta espera',noTransitNow:'Ahora no opera un autobús entre estos lugares. Se muestra una ruta a pie.'}
+};
+function boardingText(key,vars={}){return (boardingCopy[language]||boardingCopy.en)[key].replace(/\{(\w+)\}/g,(_,name)=>vars[name]??'');}
+function boardingSelection(candidate){return{routeId:String(candidate.route.passioId),stopId:String(candidate.boardId||candidate.board.id),position:candidate.route.stopPositions?.[candidate.boardId||candidate.board.id]};}
+function arrivalMatches(status,candidate){const wanted=boardingSelection(candidate);return status?.selection?.routeId===wanted.routeId&&status.selection.stopId===wanted.stopId&&status.selection.position===(wanted.position??null);}
+function updateBoardingArrival(status=liveArrivals?.getSnapshot()){
+ const card=$('boarding-arrival'),option=navState.options[navState.selected];
+ if(!card||option?.kind!=='bus'||!arrivalMatches(status,option.candidate))return;
+ const value=$('boarding-arrival-value'),meta=$('boarding-arrival-meta'),button=$('arrival-refresh');
+ const label=status.label||status.message||'';if(value&&value.textContent!==label)value.textContent=label;
+ const age=status.receivedAt?Math.max(0,Math.floor((Date.now()-status.receivedAt)/1000)):null;
+ const detail=boardingText('source')+(age===null?'':' · '+boardingText('fresh',{n:age}));
+ if(meta&&meta.textContent!==detail)meta.textContent=detail;
+ card.dataset.state=status.state;card.setAttribute('aria-busy',String(status.state==='loading'));
+ if(button){button.disabled=status.state==='loading';button.title=boardingText('refresh');button.setAttribute('aria-label',boardingText('refresh'));}
+}
+function boardingHTML(option){
+ const c=option.candidate,a=option.approach,status=liveArrivals?.getSnapshot();
+ const walking=a?.available?formatDistance(a.distanceMeters)+' · '+formatDuration(a.durationSeconds):boardingText('fromStart');
+ const label=arrivalMatches(status,c)?status.label:(language==='zh'?'正在查询下一班公交…':language==='es'?'Consultando el próximo autobús…':'Checking the next bus…');
+ return '<section id="boarding-arrival" class="boarding-arrival" aria-label="'+escapeHTML(boardingText('title'))+'"><p class="boarding-eyebrow">'+escapeHTML(boardingText('title'))+'</p><strong class="boarding-stop-name">'+escapeHTML(stopName(c.boardId||c.board.id))+'</strong><p class="boarding-walk">'+escapeHTML(boardingText('near'))+' · '+escapeHTML(walking)+'</p><div class="boarding-arrival-row"><div><span>'+escapeHTML(boardingText('next'))+'</span><strong id="boarding-arrival-value" role="status" aria-live="polite">'+escapeHTML(label)+'</strong></div><button id="arrival-refresh" type="button" aria-label="'+escapeHTML(boardingText('refresh'))+'">↻</button></div><small id="boarding-arrival-meta">'+escapeHTML(boardingText('source'))+'</small><small class="boarding-wait-note">'+escapeHTML(boardingText('noWait'))+'</small></section>';
+}
 const placeCache=new Map();
 const normalized=value=>String(value||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const campusPlaces=window.LEHIGH_PLACES||[];
@@ -160,9 +186,11 @@ function updateSuggestions(field){
  },450);
 }
 function chooseSuggestion(field,place){
+ noteLocationInteraction();
  closeAllSuggestions();
  if(place.type==='location'){
-  expandPlanner();navState.endpointVersion[field]++;navState.endpoints[field]=navState.location?{...navState.location,implicit:true,displayed:true}:null;navState.fields[field].input.value=navState.location?placeName(navState.location):'';navState.locationMessage=null;clearJourney();renderEndpoints();window.dispatchEvent(new CustomEvent('lehigh:endpoints-changed'));return;
+  expandPlanner();navState.endpointVersion[field]++;navState.endpoints[field]=navState.location?{...navState.location,implicit:true,displayed:true}:null;navState.fields[field].input.value=navState.location?placeName(navState.location):'';navState.locationMessage=null;clearJourney();renderEndpoints();window.dispatchEvent(new CustomEvent('lehigh:endpoints-changed'));
+  if(!navState.location)locateUser(false,field,false,{focusNext:false,implicit:true});return;
  }
  if(place.type==='pick'){expandPlanner();clearJourney();navState.picking=field;$('map').classList.add('picking-location');showLocationMessage('pickPrompt',{field:t(field==='start'?'originWord':'destinationWord')});return;}
  acceptSearchedPlace(field,place);
@@ -174,12 +202,14 @@ function updatePlannerChrome(){
 }
 function expandPlanner(){const wasResults=navState.resultMode;navState.plannerExpanded=true;navState.resultMode=false;if(wasResults)clearJourney();else updatePlannerChrome();}
 function collapsePlanner({resetView=true}={}){
+ noteLocationInteraction();
  cancelMapPick();closeAllSuggestions();navState.plannerExpanded=false;navState.resultMode=false;navState.locationMessageVersion++;
  navState.endpointVersion.start++;navState.endpointVersion.end++;navState.endpoints={start:null,end:null};
  $('start-stop').value='';$('end-stop').value='';navState.locationMessage=null;const status=$('location-status');if(status)status.hidden=true;
  clearJourney();clearRouteSelection();renderEndpoints();updatePlannerChrome();setDrawer(false);window.LeHighCampusExtras?.closePanels();map.closePopup?.();if(resetView)window.LeHighCampusExtras?.showCampuses?.();window.dispatchEvent(new CustomEvent('lehigh:endpoints-changed'));
 }
 function acceptSearchedPlace(field,place){
+ noteLocationInteraction();
  expandPlanner();window.LeHighCampusExtras?.closePanels();setEndpoint(field,place,{focusNext:false});
  if(field==='end'&&!navState.endpoints.start&&!navState.fields.start.input.value.trim()&&navState.location){navState.endpoints.start={...navState.location,implicit:true,displayed:true};navState.fields.start.input.value=placeName(navState.endpoints.start);}
  if(field==='start'&&!navState.endpoints.end)navState.fields.end.input.focus();
@@ -201,14 +231,14 @@ function renderEndpoints(){
   L.marker([place.lat,place.lng],{icon,title:placeName(place)}).addTo(endpointLayers).bindPopup('<strong>'+t(field==='start'?'originLabel':'destinationLabel')+'</strong><br>'+escapeHTML(placeName(place)));
  }
 }
-function invalidateInput(field){cancelMapPick();navState.endpointVersion[field]++;if(field==='start'){navState.locationMessageVersion++;navState.locationMessage=null;}navState.endpoints[field]=null;clearJourney();renderEndpoints();updateSuggestions(field);window.dispatchEvent(new CustomEvent('lehigh:endpoints-changed'));}
+function invalidateInput(field){noteLocationInteraction();cancelMapPick();navState.endpointVersion[field]++;if(field==='start'){navState.locationMessageVersion++;navState.locationMessage=null;}navState.endpoints[field]=null;clearJourney();renderEndpoints();updateSuggestions(field);window.dispatchEvent(new CustomEvent('lehigh:endpoints-changed'));}
 function focusOption(field,index){const f=navState.fields[field];if(!f.items.length)return;f.index=(index+f.items.length)%f.items.length;Array.from(f.box.querySelectorAll('[role="option"]')).forEach((el,i)=>{el.classList.toggle('highlighted',i===f.index);el.setAttribute('aria-selected',String(i===f.index));});const el=$(field+'-option-'+f.index);f.input.setAttribute('aria-activedescendant',el.id);el.scrollIntoView({block:'nearest'});}
 function translateNavigation(){
  for(const field of ['start','end']){const f=navState.fields[field];if(!f)continue;f.input.placeholder=t(field==='start'?'chooseStart':'chooseEnd');if(navState.endpoints[field]&&(!navState.endpoints[field].implicit||navState.endpoints[field].displayed))f.input.value=placeName(navState.endpoints[field]);closeSuggestions(field);}
  document.querySelector('.travel-modes').setAttribute('aria-label',language==='zh'?'出行方式':language==='es'?'Modo de viaje':'Travel mode');
  document.querySelectorAll('[data-mode]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.mode===navState.mode)));
  if(navState.locationMessage){const vars=navState.locationMessage.key==='pickPrompt'&&navState.picking?{field:t(navState.picking==='start'?'originWord':'destinationWord')}:navState.locationMessage.vars;showLocationMessage(navState.locationMessage.key,vars);}
- if(navState.location)drawUserLocation();renderEndpoints();renderJourney();updatePlannerChrome();
+ liveArrivals?.translate();if(navState.location)drawUserLocation();renderEndpoints();renderJourney();updatePlannerChrome();
 }
 function showLocationMessage(key,vars={}){
  const old=$('location-status');if(old){old.hidden=true;old.textContent='';}
@@ -227,67 +257,124 @@ function locationPolicyBlocked(){
  try{const policy=document.permissionsPolicy||document.featurePolicy;return typeof policy?.allowsFeature==='function'&&policy.allowsFeature('geolocation')===false;}catch(_){return false;}
 }
 function readLocationPermission(){
- try{if(typeof navigator.permissions?.query!=='function')return Promise.resolve('unknown');return Promise.resolve(navigator.permissions.query({name:'geolocation'})).then(permission=>['granted','denied','prompt'].includes(permission?.state)?permission.state:'unknown',()=> 'unknown');}catch(_){return Promise.resolve('unknown');}
+ const version=++deviceLocation.permissionVersion;
+ const remember=state=>{if(version===deviceLocation.permissionVersion)deviceLocation.permission=state;return state;};
+ try{if(typeof navigator.permissions?.query!=='function')return Promise.resolve(remember('unknown'));return Promise.resolve(navigator.permissions.query({name:'geolocation'})).then(permission=>remember(['granted','denied','prompt'].includes(permission?.state)?permission.state:'unknown'),()=>remember('unknown'));}catch(_){return Promise.resolve(remember('unknown'));}
 }
 function locationFailureKey(error,permission){
  if(locationPolicyBlocked())return 'locationPolicyBlocked';
  if(error?.code===1)return permission==='denied'?'locationPermissionDenied':'locationBrowserBlocked';
  return error?.code===3?'locationTimeout':'locationFailed';
 }
-function requestStartupLocation(){setTimeout(()=>locateUser(true,null,true),0);}
-function locateUser(center=true,field=null,quiet=false,{focusNext=true}={}){
- const selectionVersion=field?navState.endpointVersion[field]:null,messageVersion=navState.locationMessageVersion;
+function noteLocationInteraction(){deviceLocation.interactionVersion++;}
+function stopLocationWatch(){
+ deviceLocation.watchVersion++;
+ if(navState.watch!==null){try{navigator.geolocation.clearWatch(navState.watch);}catch(_){}navState.watch=null;}
+}
+function startLocationWatch(){
+ if(deviceLocation.paused||deviceLocation.blocked||navState.watch!==null||!window.isSecureContext||!navigator.geolocation||locationPolicyBlocked())return;
+ const version=++deviceLocation.watchVersion;
+ const current=()=>version===deviceLocation.watchVersion&&!deviceLocation.paused;
+ const failure=error=>{
+  if(!current())return;
+  if(error?.code===1){deviceLocation.blocked=true;stopLocationWatch();}
+  const reportVersion=deviceLocation.watchVersion;
+  const report=permission=>{if(deviceLocation.paused||(error?.code===1?(!deviceLocation.blocked||reportVersion!==deviceLocation.watchVersion):!current()))return;navState.locationIssue=locationFailureKey(error,permission);if(navState.plannerExpanded&&navState.endpoints.start?.type==='location')showLocationMessage(navState.locationIssue);};
+  if(error?.code===1)readLocationPermission().then(report);else report(deviceLocation.permission);
+ };
+ try{const watch=navigator.geolocation.watchPosition(position=>{if(current())receiveDevicePosition(position);},failure,{enableHighAccuracy:true,maximumAge:3000,timeout:20000});if(current())navState.watch=watch;else navigator.geolocation.clearWatch(watch);}catch(_){failure({code:1});}
+}
+function pauseLocationTracking(){
+ deviceLocation.paused=true;deviceLocation.lifecycleVersion++;noteLocationInteraction();deviceLocation.requestVersion++;stopLocationWatch();deviceLocation.cancelRequest?.();deviceLocation.cancelRequest=null;deviceLocation.resume=null;navState.locationRequest=null;$('locate-me')?.classList.remove('locating');
+ if(navState.locationMessage?.key==='locating'){navState.locationMessage=null;renderJourney();}
+}
+function resumeLocationTracking(){
+ if(document.visibilityState==='hidden')return;
+ deviceLocation.paused=false;
+ if(!deviceLocation.started||deviceLocation.resume||navState.locationRequest||navState.watch!==null)return;
+ const version=deviceLocation.requestVersion;
+ const pending=readLocationPermission().then(permission=>{
+  if(version!==deviceLocation.requestVersion||deviceLocation.paused||document.visibilityState==='hidden'||navState.locationRequest||navState.watch!==null||permission!=='granted')return;
+  deviceLocation.blocked=false;startLocationWatch();
+ });
+ deviceLocation.resume=pending;pending.finally(()=>{if(deviceLocation.resume===pending)deviceLocation.resume=null;});
+}
+function requestStartupLocation(){
+ if(deviceLocation.started)return;deviceLocation.started=true;
+ const interactionVersion=deviceLocation.interactionVersion;
+ setTimeout(()=>{if(document.visibilityState!=='hidden'&&!deviceLocation.paused)return locateUser(interactionVersion===deviceLocation.interactionVersion,null,true);},0);
+}
+function acquireDeviceLocation(){
+ const version=++deviceLocation.requestVersion,fixVersion=deviceLocation.fixVersion;
+ const current=()=>version===deviceLocation.requestVersion&&!deviceLocation.paused;
+ const requestPosition=options=>new Promise(resolve=>{
+  let settled=false;
+  const finish=result=>{if(settled)return;settled=true;if(deviceLocation.cancelRequest===cancel)deviceLocation.cancelRequest=null;resolve(result);};
+  const cancel=()=>finish({canceled:true});deviceLocation.cancelRequest=cancel;
+  try{navigator.geolocation.getCurrentPosition(position=>finish({position}),error=>finish({error}),options);}catch(_){finish({error:{code:1}});}
+ });
+ const request=(async()=>{
+  let permission=await readLocationPermission();if(!current())return null;
+  if(permission==='denied'){deviceLocation.blocked=true;stopLocationWatch();navState.locationIssue='locationPermissionDenied';return null;}
+  deviceLocation.blocked=false;
+  let result=await requestPosition({enableHighAccuracy:true,maximumAge:10000,timeout:15000});if(!current()||result.canceled)return null;
+  // A coarse browser/device fix is preferable to no dot. Retry only once, and
+  // never retry permission errors or manufacture a campus/default coordinate.
+  if(result.error?.code===2||result.error?.code===3){result=await requestPosition({enableHighAccuracy:false,maximumAge:60000,timeout:8000});if(!current()||result.canceled)return null;}
+  if(result.position&&receiveDevicePosition(result.position)){startLocationWatch();return {...navState.location};}
+  if(result.error?.code===1){
+   deviceLocation.blocked=true;stopLocationWatch();permission=await readLocationPermission();if(!current())return null;
+   navState.locationIssue=locationFailureKey(result.error,permission);return null;
+  }
+  // A watch may recover after both bounded attempts, without moving the map or
+  // changing a chosen origin. Its lifecycle is independent of caller messages.
+  startLocationWatch();
+  if(deviceLocation.fixVersion!==fixVersion&&navState.location)return {...navState.location};
+  navState.locationIssue=locationFailureKey(result.error,permission);return null;
+ })();
+ navState.locationRequest=request;
+ request.finally(()=>{if(navState.locationRequest===request){navState.locationRequest=null;$('locate-me')?.classList.remove('locating');}});
+ return request;
+}
+function locateUser(center=true,field=null,quiet=false,{focusNext=true,implicit=false}={}){
+ const selectionVersion=field?navState.endpointVersion[field]:null,messageVersion=navState.locationMessageVersion,interactionVersion=deviceLocation.interactionVersion,lifecycleVersion=deviceLocation.lifecycleVersion;
  const current=()=>messageVersion===navState.locationMessageVersion;
  const apply=position=>{
+  if(deviceLocation.paused||lifecycleVersion!==deviceLocation.lifecycleVersion)return position;
   if(!position){if(!quiet&&current())showLocationMessage(navState.locationIssue||'locationFailed');return null;}
   if(!current())return position;
-  if(center)map.setView([position.lat,position.lng],16);
-  if(field&&selectionVersion===navState.endpointVersion[field])setEndpoint(field,position,{focusNext});
+  if(!quiet)showLocationMessage('locationReady');
+  if(center&&interactionVersion===deviceLocation.interactionVersion)map.setView([position.lat,position.lng],16);
+  if(field&&selectionVersion===navState.endpointVersion[field])setEndpoint(field,implicit?{...position,implicit:true,displayed:true}:position,{focusNext});
   return position;
  };
  const unavailable=key=>{if(current()){navState.locationIssue=key;if(!quiet)showLocationMessage(key);}return Promise.resolve(null);};
  if(!window.isSecureContext)return unavailable('locationSecure');
  if(!navigator.geolocation)return unavailable('locationUnsupported');
  if(locationPolicyBlocked())return unavailable('locationPolicyBlocked');
- if(navState.locationRequest)return navState.locationRequest.then(apply);
- const permission=readLocationPermission();
+ if(deviceLocation.paused||document.visibilityState==='hidden')return Promise.resolve(null);
+ deviceLocation.started=true;
  if(!quiet)showLocationMessage('locating');$('locate-me')?.classList.add('locating');
- const request=new Promise(resolve=>{
-  const failure=async error=>{
-   const permissionState=await permission;$('locate-me')?.classList.remove('locating');
-   if(current()){navState.locationIssue=locationFailureKey(error,permissionState);if(!quiet)showLocationMessage(navState.locationIssue);}
-   resolve(null);
-  };
-  try{navigator.geolocation.getCurrentPosition(position=>{
-   $('locate-me')?.classList.remove('locating');receiveDevicePosition(position);
-   if(current()){navState.locationIssue=null;if(!quiet)showLocationMessage('locationReady');}
-   if(navState.watch===null)navState.watch=navigator.geolocation.watchPosition(receiveDevicePosition,error=>{
-    if(error.code===1){navigator.geolocation.clearWatch(navState.watch);navState.watch=null;}
-    if(!current())return;navState.locationIssue=locationFailureKey(error,'unknown');
-    if(navState.plannerExpanded&&navState.endpoints.start?.type==='location')showLocationMessage(navState.locationIssue);
-   },{enableHighAccuracy:true,maximumAge:3000,timeout:20000});
-   resolve(navState.location?{...navState.location}:null);
-  },failure,{enableHighAccuracy:true,maximumAge:10000,timeout:15000});}catch(_){failure({code:1});}
- });
- navState.locationRequest=request;
- request.finally(()=>{if(navState.locationRequest===request)navState.locationRequest=null;});
- return request.then(apply);
+ return (navState.locationRequest||acquireDeviceLocation()).then(apply);
 }
 // Device fixes update only the blue location marker; routes remain a static plan.
 function receiveDevicePosition(position){
- const c=position?.coords;if(!c||!Number.isFinite(c.latitude)||!Number.isFinite(c.longitude)||Math.abs(c.latitude)>90||Math.abs(c.longitude)>180)return;
- if(Number.isFinite(position.timestamp)&&navState.locationTime!==null&&position.timestamp<navState.locationTime)return;
+ const c=position?.coords;if(!c||!Number.isFinite(c.latitude)||!Number.isFinite(c.longitude)||Math.abs(c.latitude)>90||Math.abs(c.longitude)>180)return false;
+ if(Number.isFinite(position.timestamp)&&navState.locationTime!==null&&position.timestamp<navState.locationTime)return false;
+ deviceLocation.fixVersion++;
  navState.location={id:'my-location',name:'',type:'location',lat:c.latitude,lng:c.longitude};navState.locationAccuracy=Number.isFinite(c.accuracy)&&c.accuracy>0?c.accuracy:null;navState.locationTime=Number.isFinite(position.timestamp)?position.timestamp:Date.now();navState.locationIssue=null;drawUserLocation();
  let clearedLocationIssue=false;
  if(navState.locationMessage&&/^location/.test(navState.locationMessage.key)){navState.locationMessage=null;clearedLocationIssue=true;}
  if(navState.error&&/^location/.test(navState.error)){navState.error=null;clearedLocationIssue=true;}
  if(clearedLocationIssue)renderJourney();
+ return true;
 }
 function formatDistance(meters){return meters>=1000?t('distanceKm',{n:(meters/1000).toFixed(meters>=10000?0:1)}):t('distanceM',{n:Math.round(meters/10)*10});}
-function formatDuration(seconds){const minutes=Math.max(1,Math.ceil(seconds/60));return minutes<60?t('minutes',{n:minutes}):t('hours',{n:Math.floor(minutes/60)})+(minutes%60?' '+t('minutes',{n:minutes%60}):'');}
+function formatDuration(seconds){const minutes=Math.max(0,Math.ceil(seconds/60));return minutes<60?t('minutes',{n:minutes}):t('hours',{n:Math.floor(minutes/60)})+(minutes%60?' '+t('minutes',{n:minutes%60}):'');}
 function googleDirectionsURL(){const a=navState.endpoints.start,b=navState.endpoints.end;const params=new URLSearchParams({api:'1',origin:a.lat+','+a.lng,destination:b.lat+','+b.lng,travelmode:navState.mode==='walk'?'walking':'transit'});return 'https://www.google.com/maps/dir/?'+params;}
 function verifyAccess(route){if(route.available&&route.snapDistanceMeters?.some(d=>d>150))return {available:false,reason:'endpoint-access-gap',mode:route.mode};return route;}
 function clearJourney({keepResults=false}={}){
+ liveArrivals?.clear();
  navState.searchIntent++;if(!keepResults)navState.resultMode=false;
  navState.request?.abort();navState.version++;navState.busy=false;navState.options=[];navState.selected=0;navState.error=null;navState.note=null;navState.bounds=null;journeyLayers?.clearLayers();if(routeView==='journey')clearRouteSelection();updatePlannerChrome();renderJourney();
 }
@@ -325,17 +412,19 @@ async function searchJourney(event,{recalculate=false}={}){
  navState.resultMode=true;clearJourney({keepResults:true});renderEndpoints();const version=navState.version;const controller=new AbortController();navState.request=controller;navState.busy=true;renderJourney();
  try{
   if(navState.mode==='transit'){
-   const candidates=JourneyEngine.busCandidates(a,b,{dateKey:today(),limit:4,maxWalkMeters:1400,preferNearestStops:true}).filter(c=>c.serviceAvailable);
+   const stopId=point=>point?.type==='stop'?String(point.stopId||point.id).replace(/^stop-/,''):null;
+   const candidates=JourneyEngine.busCandidates(a,b,{dateKey:today(),limit:4,maxWalkMeters:1400,preferNearestStops:true,fixedBoardId:stopId(a),fixedAlightId:stopId(b)}).filter(c=>c.serviceAvailable&&(!window.LeHighServiceStatus||window.LeHighServiceStatus.getStatus(c.route.id).running));
    if(candidates.length){navState.options=candidates.slice(0,3).map(candidate=>({kind:'bus',candidate,loading:false}));navState.selected=0;await loadJourneyOption(0,version,controller.signal);}
-   else{navState.note='noTransit';const walk=verifyAccess(await JourneyEngine.walkRoute(a,b,controller.signal));if(version!==navState.version)return;navState.options=walk.available?[{kind:'walk',route:walk}]:[];if(!walk.available)navState.error='routeUnavailable';drawJourney();}
+   else{navState.note='noTransitNow';const walk=verifyAccess(await JourneyEngine.walkRoute(a,b,controller.signal));if(version!==navState.version)return;navState.options=walk.available?[{kind:'walk',route:walk}]:[];if(!walk.available)navState.error='routeUnavailable';drawJourney();}
   }else{const route=verifyAccess(await JourneyEngine.walkRoute(a,b,controller.signal));if(version!==navState.version)return;navState.options=route.available?[{kind:navState.mode,route}]:[];if(!route.available)navState.error='routeUnavailable';drawJourney();}
  }catch(error){if(error.name!=='AbortError'&&version===navState.version)navState.error='routeUnavailable';}
  finally{if(version===navState.version){navState.busy=false;if(navState.options.length&&!navState.error)commitImplicitOrigin();renderJourney();}}
 }
 async function loadJourneyOption(index,version=navState.version,signal=navState.request?.signal){
  const option=navState.options[index];if(!option)return;navState.selected=index;
- if(option.kind!=='bus'){clearRouteSelection();drawJourney();renderJourney();return;}
+ if(option.kind!=='bus'){liveArrivals?.clear();clearRouteSelection();drawJourney();renderJourney();return;}
  const c=option.candidate;selectRoute(c.route,false,{journey:true});
+ liveArrivals?.selectStop(boardingSelection(c));
  if(option.loading){drawJourney();renderJourney();return;}
  if(option.approach&&option.egress){drawJourney();renderJourney();return;}
  option.loading=true;renderJourney();drawJourney();
@@ -356,7 +445,10 @@ function drawJourney(){
   if(option.approach?.available)addLine(option.approach.geometry,'#4d7ac7',true);
   addLine(c.rideGeometry,c.route.color);
   if(option.egress?.available)addLine(option.egress.geometry,'#4d7ac7',true);
-  for(const [point,label] of [[c.board,t('boardAt')],[c.alight,t('alightAt')]])L.circleMarker([point.lat,point.lng],{className:'journey-stop',radius:7,color:'#fff',weight:3,fillColor:c.route.color,fillOpacity:1}).addTo(journeyLayers).bindPopup(label+'<br>'+escapeHTML(point.name));
+  for(const [point,label] of [[c.board,t('boardAt')],[c.alight,t('alightAt')]]){
+   const marker=L.circleMarker([point.lat,point.lng],{className:'journey-stop',radius:7,color:'#fff',weight:3,fillColor:c.route.color,fillOpacity:1,bubblingMouseEvents:false}).addTo(journeyLayers);
+   if(window.LeHighStopUI?.bindMarker)window.LeHighStopUI.bindMarker(marker,point.id,{route:c.route});else marker.bindPopup(label+'<br>'+escapeHTML(point.name));
+  }
  }else{if(activePolyline)activePolyline.setStyle({opacity:.12});addLine(option.route.geometry,'#3f79c6',true);}
  const coords=[navState.endpoints.start,navState.endpoints.end].map(p=>[p.lat,p.lng]);journeyLayers.eachLayer(layer=>{if(layer.getBounds){const b=layer.getBounds();if(!b.isValid||b.isValid())coords.push([b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]);}});navState.bounds=L.latLngBounds(coords);$('fit-route').hidden=false;renderEndpoints();fitJourney();
 }
@@ -364,10 +456,10 @@ function localizedStep(step,arrivalPlace=placeName(navState.endpoints.end)){cons
 function itineraryHTML(option){
  if(option.kind==='bus'){
   const c=option.candidate,a=option.approach,b=option.egress;
-  const segment=(icon,title,desc)=>'<li><span class="leg-icon">'+icon+'</span><div><strong>'+escapeHTML(title)+'</strong><small>'+escapeHTML(desc)+'</small></div></li>';
+  const segment=(icon,title,desc,extra='')=>'<li><span class="leg-icon">'+icon+'</span><div><strong>'+escapeHTML(title)+'</strong><small>'+escapeHTML(desc)+'</small>'+extra+'</div></li>';
   let html='<ol class="journey-legs">';
   html+=segment('↟',t('walkTo',{place:c.board.name}),a?.available?formatDistance(a.distanceMeters)+' · '+formatDuration(a.durationSeconds):t(option.loading?'loadingConnections':'connectionsUnavailable'));
-  html+=segment(c.route.shortName,t('rideTo',{route:routeName(c.route),place:c.alight.name}),t('estimated')+' '+formatDuration(c.rideDurationSeconds));
+  html+=segment(c.route.shortName,t('rideTo',{route:routeName(c.route),place:c.alight.name}),t('estimated')+' '+formatDuration(c.rideDurationSeconds),boardingHTML(option));
   html+=segment('↟',t('walkFinish',{place:placeName(navState.endpoints.end)}),b?.available?formatDistance(b.distanceMeters)+' · '+formatDuration(b.durationSeconds):t(option.loading?'loadingConnections':'connectionsUnavailable'));
   html+='</ol>';
   if(a?.available&&a.steps.length)html+='<details class="walking-steps"><summary>'+t('walkTo',{place:c.board.name})+'</summary>'+stepsHTML(a.steps,c.board.name)+'</details>';
@@ -395,12 +487,14 @@ function renderJourney(){
  const title=active.kind==='bus'?t('busOption',{route:routeName(active.candidate.route)}):t('walkOnly');
  const alternatives=navState.options.map((option,index)=>({option,index})).filter(item=>item.index!==navState.selected);
  const choices=alternatives.length?'<details class="journey-alternatives"><summary>'+escapeHTML(t('routeAlternatives'))+'</summary><div class="journey-choices">'+alternatives.map(({option,index})=>'<button type="button" class="journey-choice" data-journey="'+index+'"><strong>'+escapeHTML(option.kind==='bus'?routeName(option.candidate.route):t('walkOnly'))+'</strong><span>'+escapeHTML(optionTime(option))+'</span>'+(option.kind==='bus'?'<small>'+daySummary(option.candidate.route)+'</small>':'<small>'+formatDistance(option.route.distanceMeters)+'</small>')+'</button>').join('')+'</div></details>':'';
- result.innerHTML='<div class="journey-heading"><p class="detail-eyebrow">'+escapeHTML(title)+'</p><h2>'+escapeHTML(placeName(a))+'<span> → </span>'+escapeHTML(placeName(b))+'</h2></div><div class="journey-total"><span class="journey-total-value">'+escapeHTML(optionTime(active))+'</span><small>'+escapeHTML(t('approxDuration'))+'</small></div>'+(active.kind==='bus'?'<p class="journey-caveat">'+escapeHTML(t('noWait'))+'</p>':'')+(navState.note?'<p class="journey-message">'+escapeHTML(t(navState.note))+'</p>':'')+itineraryHTML(active)+choices+(navState.locationMessage&&navState.locationMessage.key!=='locating'?'<p class="journey-message">'+escapeHTML(t(navState.locationMessage.key,navState.locationMessage.vars))+'</p>':'')+'<a class="google-link" href="'+escapeHTML(googleDirectionsURL())+'" target="_blank" rel="noopener">'+t('openGoogle')+'</a><p class="journey-credit">'+escapeHTML(t('routeSources'))+'</p>';
+ result.innerHTML='<div class="journey-heading"><p class="detail-eyebrow">'+escapeHTML(title)+'</p><h2>'+escapeHTML(placeName(a))+'<span> → </span>'+escapeHTML(placeName(b))+'</h2></div><div class="journey-total"><span class="journey-total-value">'+escapeHTML(optionTime(active))+'</span><small>'+escapeHTML(t('approxDuration'))+'</small></div>'+(active.kind==='bus'?'<p class="journey-caveat">'+escapeHTML(t('noWait'))+'</p>':'')+(navState.note?'<p class="journey-message">'+escapeHTML(navState.note==='noTransitNow'?boardingText('noTransitNow'):t(navState.note))+'</p>':'')+itineraryHTML(active)+choices+(navState.locationMessage&&navState.locationMessage.key!=='locating'?'<p class="journey-message">'+escapeHTML(t(navState.locationMessage.key,navState.locationMessage.vars))+'</p>':'')+'<a class="google-link" href="'+escapeHTML(googleDirectionsURL())+'" target="_blank" rel="noopener">'+t('openGoogle')+'</a><p class="journey-credit">'+escapeHTML(t('routeSources'))+'</p>';
+ $('arrival-refresh')?.addEventListener('click',()=>liveArrivals?.refresh());updateBoardingArrival();
  const version=navState.version;
  result.querySelectorAll('[data-journey]').forEach(button=>button.addEventListener('click',()=>loadJourneyOption(+button.dataset.journey).catch(error=>{if(error.name!=='AbortError'&&version===navState.version){navState.error='routeUnavailable';renderJourney();}})));
 }
 window.initNavigation=function(){
  journeyLayers=L.featureGroup().addTo(map);endpointLayers=L.featureGroup().addTo(map);userLayers=L.featureGroup().addTo(map);
+ if(window.LeHighLiveArrivals&&typeof window.fetch==='function')liveArrivals=window.LeHighLiveArrivals.create({getLanguage:()=>language,onStatus:updateBoardingArrival});
  for(const field of ['start','end']){
   const input=$(field+'-stop'),box=$(field+'-suggestions');navState.fields[field]={input,box,items:[],index:-1,timer:null,generation:0,controller:null};
   input.addEventListener('input',()=>invalidateInput(field));input.addEventListener('focus',()=>{closeSuggestions(field==='start'?'end':'start');updateSuggestions(field);selectImplicitOriginText(field);});
@@ -412,6 +506,7 @@ window.initNavigation=function(){
  updatePlannerChrome();$('close-directions').addEventListener('click',collapsePlanner);
  $('search-form').addEventListener('submit',searchJourney);
  $('swap-stops').addEventListener('click',()=>{
+  noteLocationInteraction();
   cancelMapPick();navState.endpointVersion.start++;navState.endpointVersion.end++;
   const start=navState.endpoints.start,end=navState.endpoints.end,rawStart=$('start-stop').value,rawEnd=$('end-stop').value;
   navState.endpoints.start=end?{...end,implicit:false}:null;navState.endpoints.end=start?{...start,implicit:false}:null;
@@ -419,13 +514,19 @@ window.initNavigation=function(){
   clearJourney();renderEndpoints();window.dispatchEvent(new CustomEvent('lehigh:endpoints-changed'));
  });
  $('locate-me').addEventListener('click',()=>locateUser(true));
+ document.addEventListener('pointerdown',noteLocationInteraction,{passive:true});
+ document.addEventListener('keydown',noteLocationInteraction);
+ document.addEventListener('wheel',noteLocationInteraction,{passive:true});
+ map.on('movestart',noteLocationInteraction);
  document.addEventListener('pointerdown',event=>{const form=$('search-form');if(typeof form?.contains==='function'&&!form.contains(event.target))closeAllSuggestions();});
  document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>{const results=navState.resultMode;navState.mode=button.dataset.mode==='walk'?'walk':'transit';document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));if(results)searchJourney(undefined,{recalculate:true});}));
  map.on('click',event=>{if(!navState.picking)return;event.lehighPicked=true;const field=navState.picking;navState.picking=null;$('map').classList.remove('picking-location');navState.locationMessage=null;acceptSearchedPlace(field,{id:'map-'+Date.now(),type:'map',name:'',lat:event.latlng.lat,lng:event.latlng.lng});});
  window.dispatchEvent(new CustomEvent('lehigh:navigation-ready'));
  // Request once on page open; the browser owns the permission decision.
  requestStartupLocation();
- window.addEventListener('pagehide',()=>{if(navState.watch!==null){navigator.geolocation.clearWatch(navState.watch);navState.watch=null;}});
+ window.addEventListener('pagehide',pauseLocationTracking);
+ window.addEventListener('pageshow',resumeLocationTracking);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')pauseLocationTracking();else resumeLocationTracking();});
 };
 window.LeHighNavigation={translate:translateNavigation,render:renderJourney,clearJourney,fit:fitJourney,hasJourney:()=>Boolean(navState.bounds),
  selectPlace(field,place){if(!['start','end'].includes(field)||!place||!Number.isFinite(place.lat)||!Number.isFinite(place.lng))return;acceptSearchedPlace(field,place);map.setView([place.lat,place.lng],17);},
